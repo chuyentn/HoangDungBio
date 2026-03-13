@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { sendEmail } from '../services/emailService';
 import { 
   Users, 
   UserPlus, 
@@ -28,7 +29,9 @@ import {
   RefreshCw,
   Tag,
   History,
-  X
+  X,
+  Send,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -56,6 +59,7 @@ interface Lead {
   email: string;
   phone: string;
   status: 'New' | 'Contacted' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed';
+  priority: 'High' | 'Medium' | 'Low';
   value: number;
   source: string;
   lastContact: string;
@@ -67,6 +71,12 @@ interface Lead {
   }[];
 }
 
+const PRIORITY_COLORS = {
+  'High': 'bg-red-100 text-red-700 border-red-200',
+  'Medium': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  'Low': 'bg-gray-100 text-gray-700 border-gray-200',
+};
+
 const MOCK_LEADS: Lead[] = [
   { 
     id: '1', 
@@ -75,6 +85,7 @@ const MOCK_LEADS: Lead[] = [
     email: 'a.nguyen@papermill.vn', 
     phone: '0901234567', 
     status: 'Negotiation', 
+    priority: 'High',
     value: 15000, 
     source: 'Website Form', 
     lastContact: '2 giờ trước',
@@ -91,6 +102,7 @@ const MOCK_LEADS: Lead[] = [
     email: 'b.tran@abcfood.com', 
     phone: '0912345678', 
     status: 'New', 
+    priority: 'Medium',
     value: 8000, 
     source: 'Google Search', 
     lastContact: '5 giờ trước',
@@ -106,6 +118,7 @@ const MOCK_LEADS: Lead[] = [
     email: 'c.le@thanhcong.vn', 
     phone: '0987654321', 
     status: 'Qualified', 
+    priority: 'Low',
     value: 25000, 
     source: 'Referral', 
     lastContact: '1 ngày trước',
@@ -121,6 +134,7 @@ const MOCK_LEADS: Lead[] = [
     email: 'd.pham@ducthanhwood.com', 
     phone: '0933445566', 
     status: 'Proposal', 
+    priority: 'High',
     value: 12000, 
     source: 'LinkedIn', 
     lastContact: '3 ngày trước',
@@ -136,6 +150,7 @@ const MOCK_LEADS: Lead[] = [
     email: 'an.hoang@minhphu.com', 
     phone: '0944556677', 
     status: 'Closed', 
+    priority: 'Medium',
     value: 45000, 
     source: 'Exhibition', 
     lastContact: '1 tuần trước',
@@ -182,8 +197,57 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
   const [sourceFilter, setSourceFilter] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('Newest');
   const [newTag, setNewTag] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailContent, setEmailContent] = useState('');
 
   const selectedLead = leads.find(l => l.id === selectedLeadId) || null;
+
+  const handleOpenEmailModal = () => {
+    if (!selectedLead) return;
+    setEmailSubject(`Chào mừng ${selectedLead.name} đến với Hoàng Dung Biomass`);
+    setEmailContent(`Xin chào ${selectedLead.name},\n\nCảm ơn bạn đã quan tâm đến các giải pháp năng lượng tái tạo của Hoàng Dung Biomass.\n\nChúng tôi đã nhận được yêu cầu từ ${selectedLead.company} và sẽ sớm liên hệ lại với bạn để tư vấn chi tiết.\n\nTrân trọng,\nĐội ngũ Hoàng Dung Biomass`);
+    setIsEmailModalOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedLead) return;
+    
+    setIsSendingEmail(true);
+    try {
+      const result = await sendEmail({
+        to: selectedLead.email,
+        subject: emailSubject,
+        htmlContent: emailContent.replace(/\n/g, '<br>')
+      });
+
+      if (result.success) {
+        // Add to history
+        setLeads(prev => prev.map(l => {
+          if (l.id === selectedLead.id) {
+            return {
+              ...l,
+              history: [
+                { date: new Date().toISOString().split('T')[0], type: 'Email', note: `Đã gửi email: ${emailSubject}` },
+                ...l.history
+              ]
+            };
+          }
+          return l;
+        }));
+        setIsEmailModalOpen(false);
+        alert("Email đã được gửi thành công!");
+      } else {
+        alert("Lỗi khi gửi email: " + result.error);
+      }
+    } catch (error) {
+      console.error("Error in handleSendEmail:", error);
+      alert("Đã có lỗi xảy ra khi gửi email.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   const handleAddTag = (leadId: string, tag: string) => {
     if (!tag.trim()) return;
@@ -532,6 +596,7 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Khách hàng</th>
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Công ty</th>
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Trạng thái</th>
+                          <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Độ ưu tiên</th>
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Giá trị dự kiến</th>
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Liên hệ cuối</th>
                           <th className="px-6 py-4 text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Tags</th>
@@ -563,6 +628,11 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${STATUS_COLORS[lead.status]}`}>
                                 {lead.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${PRIORITY_COLORS[lead.priority]}`}>
+                                {lead.priority}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -631,7 +701,12 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                                       >
                                         <div className="flex items-start justify-between mb-3">
                                           <div>
-                                            <p className="text-sm font-bold text-[#1A1A1A] group-hover:text-[#22C55E] transition-colors">{lead.name}</p>
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <p className="text-sm font-bold text-[#1A1A1A] group-hover:text-[#22C55E] transition-colors">{lead.name}</p>
+                                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold border ${PRIORITY_COLORS[lead.priority]}`}>
+                                                {lead.priority}
+                                              </span>
+                                            </div>
                                             <div className="flex flex-wrap gap-1 mt-1">
                                               {lead.tags.map((tag, i) => (
                                                 <span key={i} className="px-1.5 py-0.5 bg-[#F3F4F6] text-[#6B7280] text-[8px] font-bold rounded flex items-center gap-1">
@@ -710,9 +785,14 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                   </div>
                   <h3 className="text-xl font-bold text-[#1A1A1A]">{selectedLead.name}</h3>
                   <p className="text-sm text-[#6B7280] mb-4">{selectedLead.company}</p>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[selectedLead.status]}`}>
-                    {selectedLead.status}
-                  </span>
+                  <div className="flex gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[selectedLead.status]}`}>
+                      {selectedLead.status}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${PRIORITY_COLORS[selectedLead.priority]}`}>
+                      {selectedLead.priority}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-6">
@@ -817,12 +897,102 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                 <button className="py-3 bg-white border border-[#E5E7EB] rounded-xl text-xs font-bold hover:bg-[#F3F4F6] transition-all">
                   Chỉnh sửa
                 </button>
-                <button className="py-3 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all">
+                <button 
+                  onClick={handleOpenEmailModal}
+                  className="py-3 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
                   Gửi Email
                 </button>
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+      {/* Email Composition Modal */}
+      <AnimatePresence>
+        {isEmailModalOpen && selectedLead && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEmailModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-[#F9FAFB]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#22C55E]/10 rounded-xl flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-[#22C55E]" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-[#1A1A1A]">Soạn Email</h3>
+                    <p className="text-[10px] text-[#9CA3AF] font-bold uppercase tracking-wider">Gửi đến: {selectedLead.email}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="p-2 hover:bg-[#E5E7EB] rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-[#6B7280]" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest ml-1">Chủ đề</label>
+                  <input 
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="Nhập chủ đề email..."
+                    className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm focus:ring-2 focus:ring-[#22C55E] outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1.5 flex-1 flex flex-col">
+                  <label className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest ml-1">Nội dung</label>
+                  <textarea 
+                    value={emailContent}
+                    onChange={(e) => setEmailContent(e.target.value)}
+                    placeholder="Soạn nội dung email tại đây..."
+                    className="w-full flex-1 px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm focus:ring-2 focus:ring-[#22C55E] outline-none transition-all min-h-[300px] resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-end gap-3">
+                <button 
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="px-6 py-2.5 text-sm font-bold text-[#6B7280] hover:bg-[#E5E7EB] rounded-xl transition-all"
+                >
+                  Hủy
+                </button>
+                <button 
+                  onClick={handleSendEmail}
+                  disabled={isSendingEmail || !emailSubject || !emailContent}
+                  className="px-8 py-2.5 bg-[#22C55E] text-white rounded-xl text-sm font-bold hover:bg-[#16A34A] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#22C55E]/20"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Gửi ngay
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

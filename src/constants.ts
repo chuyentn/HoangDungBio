@@ -74,3 +74,9 @@ export const CASE_STUDIES: CaseStudy[] = [
     tags: ["Energy Audit", "EcoLoop"]
   }
 ];
+
+export const ADMIN_EMAILS = [
+  'coach.chuyen@gmail.com',
+  'admin@hoangdungbiomass.com'
+];
+

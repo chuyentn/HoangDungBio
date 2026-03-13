@@ -1,8 +1,40 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
+
+const MOCK_DASHBOARD_DATA = {
+  totalLeads: 156,
+  conversionRate: "18.4%",
+  activeProjects: 24,
+  carbonOffset: "4,250 Tons",
+  topProducts: [
+    { name: "Wood Pellets", value: 450 },
+    { name: "Rice Husk Pellets", value: 320 },
+    { name: "Cashew Shell Cake", value: 180 },
+    { name: "Corn Cobs", value: 120 }
+  ],
+  monthlySavings: [
+    { month: "Oct", savings: 4200 },
+    { month: "Nov", savings: 5100 },
+    { month: "Dec", savings: 4800 },
+    { month: "Jan", savings: 6200 },
+    { month: "Feb", savings: 7500 },
+    { month: "Mar", savings: 8800 }
+  ],
+  leadStatus: [
+    { name: "New", value: 45, color: "#3b82f6" },
+    { name: "Contacted", value: 30, color: "#f59e0b" },
+    { name: "Negotiating", value: 15, color: "#10b981" },
+    { name: "Closed", value: 10, color: "#22c55e" }
+  ]
+};
 
 async function startServer() {
   const app = express();
@@ -102,65 +134,90 @@ async function startServer() {
 
     if (!isValidUrl(webhookUrl)) {
       if (webhookUrl) {
-        console.warn(`Invalid GOOGLE_SHEETS_WEBHOOK_URL: "${webhookUrl}". Expected a full URL (e.g. Google Apps Script). Falling back to mock data.`);
+        console.warn(`Invalid GOOGLE_SHEETS_WEBHOOK_URL: "${webhookUrl}". Expected a full URL. Falling back to mock data.`);
       }
-      // Fallback mock data for demo
-      return res.json({
-        success: true,
-        data: {
-          totalLeads: 156,
-          conversionRate: "18.4%",
-          activeProjects: 24,
-          carbonOffset: "4,250 Tons",
-          topProducts: [
-            { name: "Wood Pellets", value: 450 },
-            { name: "Rice Husk Pellets", value: 320 },
-            { name: "Cashew Shell Cake", value: 180 },
-            { name: "Corn Cobs", value: 120 }
-          ],
-          monthlySavings: [
-            { month: "Oct", savings: 4200 },
-            { month: "Nov", savings: 5100 },
-            { month: "Dec", savings: 4800 },
-            { month: "Jan", savings: 6200 },
-            { month: "Feb", savings: 7500 },
-            { month: "Mar", savings: 8800 }
-          ],
-          leadStatus: [
-            { name: "New", value: 45, color: "#3b82f6" },
-            { name: "Contacted", value: 30, color: "#f59e0b" },
-            { name: "Negotiating", value: 15, color: "#10b981" },
-            { name: "Closed", value: 10, color: "#22c55e" }
-          ]
-        }
-      });
+      return res.json({ success: true, data: MOCK_DASHBOARD_DATA });
     }
 
     try {
-      const response = await fetch(webhookUrl);
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(webhookUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const data = await response.json();
         res.json({ success: true, data });
       } else {
-        res.status(500).json({ success: false, error: "Failed to fetch data from Google Sheets" });
+        console.warn(`Google Sheets API returned ${response.status}. Falling back to mock data.`);
+        res.json({ success: true, data: MOCK_DASHBOARD_DATA });
       }
     } catch (error) {
-      console.error("Error fetching from webhook:", error);
+      console.error("Error fetching from webhook, falling back to mock data:", error);
+      res.json({ success: true, data: MOCK_DASHBOARD_DATA });
+    }
+  });
+
+  // API route for sending emails (Integrated with Brevo)
+  app.post("/api/send-email", async (req, res) => {
+    const { to, subject, htmlContent } = req.body;
+    const apiKey = process.env.BREVO_API_KEY;
+
+    if (!apiKey) {
+      console.warn("BREVO_API_KEY is not set. Email logged to console (Demo mode).");
+      console.log("Email to:", to);
+      console.log("Subject:", subject);
+      return res.json({ success: true, message: "Demo mode: Email logged to server console" });
+    }
+
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": apiKey,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { email: "no-reply@hoangdungbiomass.com", name: "Hoàng Dung Biomass" },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: htmlContent,
+        }),
+      });
+
+      if (response.ok) {
+        res.json({ success: true });
+      } else {
+        const error = await response.json();
+        console.error("Brevo API Error:", error);
+        res.status(500).json({ success: false, error: error.message || "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
       res.status(500).json({ success: false, error: "Internal server error" });
     }
   });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    console.log("Starting Vite in middleware mode...");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        host: '0.0.0.0',
+        port: 3000
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static("dist"));
+    const distPath = path.join(__dirname, "dist");
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile("dist/index.html", { root: "." });
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 

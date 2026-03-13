@@ -25,6 +25,7 @@ import {
   LogIn,
   LogOut,
   User,
+  UserPlus,
   TrendingUp,
   RefreshCw,
   Calendar,
@@ -60,7 +61,7 @@ import {
 } from 'recharts';
 import SavingsCalculator from './components/SavingsCalculator';
 import CRMSystem from './components/CRMSystem';
-import { PRODUCTS, CASE_STUDIES } from './constants';
+import { PRODUCTS, CASE_STUDIES, ADMIN_EMAILS } from './constants';
 import { initGA, trackPageView } from './services/analytics';
 import { auth } from './services/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User as FirebaseUser } from 'firebase/auth';
@@ -109,6 +110,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'crm'>('landing');
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+
+  const isAdmin = user && user.email && ADMIN_EMAILS.includes(user.email);
 
   const MOCK_PROJECTS = [
     { 
@@ -165,14 +168,34 @@ export default function App() {
   // Fetch dashboard data
   const fetchDashboard = async () => {
     try {
+      console.log("Initiating dashboard fetch...");
       const response = await fetch('/api/dashboard');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
+      }
       const result = await response.json();
       if (result.success) {
         setDashboardData(result.data);
         setLastUpdate(new Date());
+      } else {
+        console.error("Dashboard API returned success:false", result.error);
       }
     } catch (error) {
       console.error("Error fetching dashboard:", error);
+      // Fallback to mock data if fetch fails completely
+      if (!dashboardData) {
+        console.log("Using fallback mock data due to fetch error");
+        setDashboardData({
+          totalLeads: 0,
+          conversionRate: "0%",
+          activeProjects: 0,
+          carbonOffset: "0 Tons",
+          topProducts: [],
+          monthlySavings: [],
+          leadStatus: []
+        });
+      }
     }
   };
 
@@ -471,6 +494,10 @@ export default function App() {
   );
 
   if (currentView === 'crm') {
+    if (!isAdmin) {
+      setCurrentView('landing');
+      return null;
+    }
     return <CRMSystem onBack={() => setCurrentView('landing')} dashboardData={dashboardData} onRefresh={fetchDashboard} lastUpdate={lastUpdate} />;
   }
 
@@ -489,13 +516,15 @@ export default function App() {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <button 
-              onClick={() => setCurrentView('crm')}
-              className={`text-sm font-bold flex items-center gap-2 transition-colors ${scrolled ? 'text-hdb-green hover:text-hdb-accent' : 'text-white hover:text-hdb-accent'}`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              {t('nav.crmDashboard')}
-            </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setCurrentView('crm')}
+                className={`text-sm font-bold flex items-center gap-2 transition-colors ${scrolled ? 'text-hdb-green hover:text-hdb-accent' : 'text-white hover:text-hdb-accent'}`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                {t('nav.crmDashboard')}
+              </button>
+            )}
             {[
               { key: 'solutions', label: t('nav.solutions') },
               { key: 'products', label: t('nav.products') },
@@ -525,18 +554,27 @@ export default function App() {
                   </div>
                   <span className={`text-xs font-bold ${scrolled ? 'text-hdb-dark' : 'text-white'}`}>{user.displayName?.split(' ')[0]}</span>
                 </div>
-                <button onClick={handleLogout} className={`p-2 rounded-full hover:bg-red-500/10 text-red-500 transition-all`}>
+                <button onClick={handleLogout} className={`p-2 rounded-full hover:bg-red-500/10 text-red-500 transition-all`} title="Logout">
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <button 
-                onClick={handleLogin}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'}`}
-              >
-                <LogIn className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase">Login</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleLogin}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'}`}
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase">{i18n.language === 'vi' ? 'Đăng nhập' : 'Login'}</span>
+                </button>
+                <button 
+                  onClick={handleLogin}
+                  className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : ''}`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase">{i18n.language === 'vi' ? 'Đăng ký' : 'Register'}</span>
+                </button>
+              </div>
             )}
 
             <button 
@@ -578,19 +616,57 @@ export default function App() {
                     {item.label}
                   </a>
                 ))}
-                <button 
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    setCurrentView('crm');
-                  }}
-                  className="text-lg font-bold text-hdb-green flex items-center gap-2 transition-colors"
-                >
-                  <LayoutDashboard className="w-5 h-5" />
-                  {t('nav.crmDashboard')}
-                </button>
-                <div className="pt-4 border-t border-hdb-earth flex items-center justify-between">
-                  <span className="text-sm font-bold text-hdb-dark/40 uppercase tracking-widest">{i18n.language === 'vi' ? 'Ngôn ngữ' : 'Language'}</span>
-                  <LanguageSwitcher className="!border-hdb-dark/20 !text-hdb-dark" />
+                {isAdmin && (
+                  <button 
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setCurrentView('crm');
+                    }}
+                    className="text-lg font-bold text-hdb-green flex items-center gap-2 transition-colors"
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                    {t('nav.crmDashboard')}
+                  </button>
+                )}
+                <div className="pt-4 border-t border-hdb-earth flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-hdb-dark/40 uppercase tracking-widest">{i18n.language === 'vi' ? 'Ngôn ngữ' : 'Language'}</span>
+                    <LanguageSwitcher className="!border-hdb-dark/20 !text-hdb-dark" />
+                  </div>
+                  
+                  {user ? (
+                    <div className="flex items-center justify-between p-4 bg-hdb-earth/30 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-hdb-green/20 flex items-center justify-center overflow-hidden">
+                          {user.photoURL ? <img src={user.photoURL} alt="User" className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-hdb-green" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-hdb-dark">{user.displayName || 'User'}</p>
+                          <p className="text-[10px] text-hdb-dark/50">{user.email}</p>
+                        </div>
+                      </div>
+                      <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-50 text-xl rounded-lg">
+                        <LogOut className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => { setIsMenuOpen(false); handleLogin(); }}
+                        className="flex items-center justify-center gap-2 py-3 border border-hdb-dark/20 rounded-xl font-bold text-hdb-dark"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        {i18n.language === 'vi' ? 'Đăng nhập' : 'Login'}
+                      </button>
+                      <button 
+                        onClick={() => { setIsMenuOpen(false); handleLogin(); }}
+                        className="flex items-center justify-center gap-2 py-3 bg-hdb-dark text-white rounded-xl font-bold"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        {i18n.language === 'vi' ? 'Đăng ký' : 'Register'}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button 
                   onClick={() => {
