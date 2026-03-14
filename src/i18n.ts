@@ -15,12 +15,39 @@ const viTranslation = {
     logout: "Đăng xuất"
   },
   hero: {
-    badge: "Giải pháp nhiên liệu Net Zero",
+    tagline: "Giải pháp nhiên liệu Net Zero",
     title: "Năng Lượng Xanh",
     subtitle: "Cho Tương Lai Bền Vững",
     description: "Hoàng Dung Biomass cung cấp hệ sinh thái giải pháp năng lượng sinh khối toàn diện, giúp doanh nghiệp tối ưu chi phí và đạt mục tiêu Net Zero.",
-    cta1: "Khám phá giải pháp",
-    cta2: "Tư vấn CarbonLoop™"
+    cta: {
+      primary: "Khám phá giải pháp",
+      secondary: "Tư vấn CarbonLoop™"
+    },
+    stats: {
+      experience: "Năm kinh nghiệm",
+      carbon: "Tấn CO2 giảm thiểu",
+      renewable: "Năng lượng tái tạo"
+    }
+  },
+  solutions: {
+    tagline: "Giải pháp năng lượng toàn diện",
+    description: "Hệ sinh thái dịch vụ giúp doanh nghiệp chuyển đổi sang năng lượng xanh một cách hiệu quả và tiết kiệm.",
+    carbonloop: {
+      title: "CarbonLoop™",
+      description: "Lộ trình Net Zero toàn diện từ kiểm toán đến thực thi."
+    },
+    ecoloop: {
+      title: "EcoLoop™ Supply",
+      description: "Nguồn cung nhiên liệu sinh khối ổn định và chất lượng cao."
+    },
+    boiler: {
+      title: "Tối ưu hóa lò hơi",
+      description: "Cải tạo và nâng cấp hệ thống nhiệt để đạt hiệu suất tối đa."
+    },
+    netzero: {
+      title: "Nhiên liệu Net Zero",
+      description: "Các loại nhiên liệu thay thế than đá với phát thải bằng không."
+    }
   },
   challenges: {
     tag: "Thách thức năng lượng",
@@ -84,27 +111,27 @@ const viTranslation = {
     }
   },
   products: {
-    woodPellets: {
+    woodpellets: {
       name: "Viên nén mùn cưa (Wood Pellets)",
       desc: "Nhiên liệu sinh khối chất lượng cao, độ tro thấp, nhiệt trị ổn định cho lò hơi công nghiệp."
     },
-    riceHuskPellets: {
+    ricehuskpellets: {
       name: "Viên nén củi trấu (Rice Husk Pellets)",
       desc: "Giải pháp tận dụng phế phẩm nông nghiệp, chi phí tối ưu cho các nhà máy khu vực ĐBSCL."
     },
-    cashewShellCake: {
+    cashewshellcake: {
       name: "Bã vỏ hạt điều (Cashew Shell Cake)",
       desc: "Nhiệt trị cực cao, phù hợp cho các hệ thống đốt cần công suất nhiệt lớn."
     },
-    woodChips: {
+    woodchips: {
       name: "Dăm gỗ (Wood Chips)",
       desc: "Giải pháp nhiên liệu sinh khối thô, giá thành rẻ, phù hợp cho lò hơi tầng sôi và lò ghi xích."
     },
-    palmKernelShell: {
+    palmkernelshell: {
       name: "Vỏ cọ (Palm Kernel Shell)",
       desc: "Nhiên liệu Net Zero năng lượng cao, cháy lâu, ít khói, lý tưởng cho các nhà máy xi măng và nhiệt điện."
     },
-    biomassBriquettes: {
+    biomassbriquettes: {
       name: "Củi ép sinh khối (Biomass Briquettes)",
       desc: "Nhiên liệu nén mật độ cao, thời gian cháy dài, thay thế hoàn hảo cho than đá truyền thống."
     },
@@ -237,6 +264,7 @@ const viTranslation = {
     co2Reduction: "Giảm phát thải CO2",
     roi: "Thời gian hoàn vốn ước tính",
     contactForAudit: "Đăng ký kiểm toán năng lượng chi tiết",
+    quoteRequest: "Yêu cầu báo giá từ kết quả tính toán",
     disclaimer: "* Kết quả chỉ mang tính chất tham khảo dựa trên giá thị trường trung bình.",
     fuels: {
       coal: "Than đá",
@@ -280,12 +308,39 @@ const enTranslation = {
     logout: "Logout"
   },
   hero: {
-    badge: "Net Zero Fuel Solutions",
+    tagline: "Net Zero Fuel Solutions",
     title: "Green Energy",
     subtitle: "For a Sustainable Future",
     description: "Hoàng Dung Biomass provides a comprehensive biomass energy ecosystem, helping businesses optimize costs and achieve Net Zero goals.",
-    cta1: "Explore Solutions",
-    cta2: "CarbonLoop™ Consulting"
+    cta: {
+      primary: "Explore Solutions",
+      secondary: "CarbonLoop™ Consulting"
+    },
+    stats: {
+      experience: "Years Experience",
+      carbon: "Tons CO2 Offset",
+      renewable: "Renewable Energy"
+    }
+  },
+  solutions: {
+    tagline: "Comprehensive Energy Solutions",
+    description: "A service ecosystem that helps businesses transition to green energy efficiently and cost-effectively.",
+    carbonloop: {
+      title: "CarbonLoop™",
+      description: "Comprehensive Net Zero roadmap from audit to execution."
+    },
+    ecoloop: {
+      title: "EcoLoop™ Supply",
+      description: "Stable and high-quality biomass fuel supply."
+    },
+    boiler: {
+      title: "Boiler Optimization",
+      description: "Retrofit and upgrade thermal systems for maximum efficiency."
+    },
+    netzero: {
+      title: "Net Zero Fuels",
+      description: "Coal alternative fuels with zero net emissions."
+    }
   },
   challenges: {
     tag: "Energy Challenges",
@@ -349,27 +404,27 @@ const enTranslation = {
     }
   },
   products: {
-    woodPellets: {
+    woodpellets: {
       name: "Wood Pellets",
       desc: "High-quality biomass fuel, low ash, stable calorific value for industrial boilers."
     },
-    riceHuskPellets: {
+    ricehuskpellets: {
       name: "Rice Husk Pellets",
       desc: "Solution utilizing agricultural waste, optimal cost for factories in the Mekong Delta region."
     },
-    cashewShellCake: {
+    cashewshellcake: {
       name: "Cashew Shell Cake",
       desc: "Extremely high calorific value, suitable for combustion systems requiring large heat capacity."
     },
-    woodChips: {
+    woodchips: {
       name: "Wood Chips",
       desc: "Raw biomass fuel solution, low cost, suitable for fluidized bed and chain grate boilers."
     },
-    palmKernelShell: {
+    palmkernelshell: {
       name: "Palm Kernel Shell",
       desc: "High-energy Net Zero fuel, long burning time, low smoke, ideal for cement and thermal power plants."
     },
-    biomassBriquettes: {
+    biomassbriquettes: {
       name: "Biomass Briquettes",
       desc: "High-density compressed fuel, long burning time, perfect replacement for traditional coal."
     },
@@ -502,6 +557,7 @@ const enTranslation = {
     co2Reduction: "CO2 Reduction",
     roi: "Estimated ROI Period",
     contactForAudit: "Register for Detailed Energy Audit",
+    quoteRequest: "Request quote from calculation results",
     disclaimer: "* Results are for reference only based on average market prices.",
     fuels: {
       coal: "Coal",
@@ -547,8 +603,13 @@ i18n
   .init({
     resources,
     fallbackLng: 'vi',
+    supportedLngs: ['vi', 'en', 'ko', 'ja', 'zh', 'es'],
     interpolation: {
       escapeValue: false
+    },
+    detection: {
+      order: ['querystring', 'cookie', 'localStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage', 'cookie']
     }
   });
 

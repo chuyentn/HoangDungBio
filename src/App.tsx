@@ -307,8 +307,6 @@ export default function App() {
     e.preventDefault();
     if (!user || !newComment.trim()) return;
 
-    if (!window.confirm(t('hub.confirmComment'))) return;
-
     const commentObj = {
       id: Date.now(),
       userId: user.uid,
@@ -323,18 +321,17 @@ export default function App() {
     setNewComment('');
 
     try {
-      const response = await fetch('/api/comments', {
+      console.log('Submitting comment...', commentObj);
+      await fetch('https://script.google.com/macros/s/AKfycbygncl_PILfJcwIIb2gbFGzjzhuMWMm6sYl6bSyEPBVRP3fWir2nAGq37h1sgRsM9SY/exec', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           ...commentObj,
-          userEmail: user.email
+          userEmail: user.email,
+          type: 'Comment'
         })
       });
-
-      if (!response.ok) {
-        console.error("Failed to save comment to Google Sheets");
-      }
     } catch (error) {
       console.error("Error submitting comment:", error);
     }
@@ -357,9 +354,7 @@ export default function App() {
   };
 
   const handleDeleteComment = (id: number) => {
-    if (window.confirm(t('hub.confirmDeleteComment'))) {
-      setComments(prev => prev.filter(c => c.id !== id));
-    }
+    setComments(prev => prev.filter(c => c.id !== id));
   };
 
   const handleTaskSubmit = (e: React.FormEvent) => {
@@ -387,9 +382,7 @@ export default function App() {
   };
 
   const handleDeleteTask = (id: number) => {
-    if (window.confirm(t('hub.confirmDelete'))) {
-      setTasks(prev => prev.filter(task => task.id !== id));
-    }
+    setTasks(prev => prev.filter(task => task.id !== id));
   };
 
   const startEditing = (task: any) => {
@@ -468,6 +461,7 @@ export default function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submission started');
     setIsSubmitting(true);
 
     const payload = {
@@ -478,29 +472,29 @@ export default function App() {
       datasheet: selectedDatasheet
     };
 
+    console.log('Payload:', payload);
+
     try {
-      const response = await fetch('/api/leads', {
+      await fetch('https://script.google.com/macros/s/AKfycbygncl_PILfJcwIIb2gbFGzjzhuMWMm6sYl6bSyEPBVRP3fWir2nAGq37h1sgRsM9SY/exec', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
       });
 
-      if (response.ok) {
-        setToast({ message: t('form.success'), type: 'success', isVisible: true });
-        setIsModalOpen(false);
-        // Reset form
-        setFormData({
-          fullName: '',
-          phone: '',
-          company: '',
-          country: '',
-          email: '',
-          boilerCapacity: '',
-          fuelConsumption: ''
-        });
-      } else {
-        throw new Error('Failed to submit');
-      }
+      console.log('Fetch completed (no-cors)');
+      setToast({ message: t('form.success'), type: 'success', isVisible: true });
+      setIsModalOpen(false);
+      // Reset form
+      setFormData({
+        fullName: '',
+        phone: '',
+        company: '',
+        country: '',
+        email: '',
+        boilerCapacity: '',
+        fuelConsumption: ''
+      });
     } catch (error) {
       console.error('Submission error:', error);
       setToast({ message: t('form.error'), type: 'error', isVisible: true });
@@ -522,34 +516,6 @@ export default function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const languages = [
-    { code: 'vi', label: 'VN', flag: 'vn' },
-    { code: 'en', label: 'EN', flag: 'us' },
-    { code: 'ko', label: 'KR', flag: 'kr' },
-    { code: 'ja', label: 'JP', flag: 'jp' },
-    { code: 'zh', label: 'CN', flag: 'cn' },
-    { code: 'es', label: 'ES', flag: 'es' }
-  ];
-
-  const toggleLanguage = () => {
-    const currentIndex = languages.findIndex(l => l.code === i18n.language);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    i18n.changeLanguage(languages[nextIndex].code);
-  };
-
-  const LanguageSwitcher = ({ className = "" }: { className?: string }) => {
-    const currentLang = languages.find(l => l.code === i18n.language) || languages[0];
-    return (
-      <button 
-        onClick={toggleLanguage}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'} ${className}`}
-      >
-        <img src={`https://flagcdn.com/w20/${currentLang.flag}.png`} alt={currentLang.label} className="w-5 h-auto rounded-sm" />
-        <span className="text-xs font-bold uppercase">{currentLang.label}</span>
-      </button>
-    );
-  };
 
   if (isLoading) return <Loading />;
 
@@ -581,7 +547,6 @@ export default function App() {
         handleLogout={handleLogout}
         setCurrentView={setCurrentView}
         openModal={openModal}
-        LanguageSwitcher={LanguageSwitcher}
       />
 
       <AnimatePresence mode="wait">
@@ -1977,8 +1942,6 @@ export default function App() {
                           name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          pattern="^\+?[0-9]+$"
-                          title={t('formFields.phoneTitle')}
                           className="w-full px-4 py-2.5 bg-hdb-earth/20 border border-hdb-earth rounded-xl focus:outline-none focus:ring-2 focus:ring-hdb-green text-sm" 
                           placeholder="090..." 
                         />
@@ -2021,8 +1984,6 @@ export default function App() {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
-                        title={t('formFields.emailTitle')}
                         className="w-full px-4 py-2.5 bg-hdb-earth/20 border border-hdb-earth rounded-xl focus:outline-none focus:ring-2 focus:ring-hdb-green text-sm" 
                         placeholder="name@company.com" 
                       />
@@ -2097,6 +2058,7 @@ export default function App() {
                     </div>
                     )}
                     <button 
+                      type="submit"
                       disabled={isSubmitting}
                       className="w-full py-4 bg-hdb-green text-white rounded-xl font-bold hover:bg-hdb-accent transition-all shadow-lg shadow-hdb-green/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >

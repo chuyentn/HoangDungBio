@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { Leaf, Menu, X, LayoutDashboard, User, LogIn, LogOut, UserPlus } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface NavbarProps {
   scrolled: boolean;
@@ -14,7 +15,6 @@ interface NavbarProps {
   handleLogout: () => void;
   setCurrentView: (view: 'main' | 'crm') => void;
   openModal: (intent: string) => void;
-  LanguageSwitcher: React.ComponentType<{ className?: string }>;
 }
 
 export default function Navbar({ 
@@ -26,8 +26,7 @@ export default function Navbar({
   handleLogin, 
   handleLogout, 
   setCurrentView, 
-  openModal,
-  LanguageSwitcher
+  openModal
 }: NavbarProps) {
   const { t, i18n } = useTranslation();
 
@@ -76,7 +75,7 @@ export default function Navbar({
         </div>
 
         <div className="hidden md:flex items-center gap-6">
-          <LanguageSwitcher className={scrolled ? 'text-hdb-dark border-hdb-dark/20' : 'text-white border-white/20'} />
+          <LanguageSwitcher scrolled={scrolled} />
           
           {user ? (
             <div className="flex items-center gap-4">
@@ -158,7 +157,7 @@ export default function Navbar({
               <div className="pt-4 border-t border-hdb-earth flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-hdb-dark/40 uppercase tracking-widest">{i18n.language === 'vi' ? 'Ngôn ngữ' : 'Language'}</span>
-                  <LanguageSwitcher className="!border-hdb-dark/20 !text-hdb-dark" />
+                  <LanguageSwitcher scrolled={true} />
                 </div>
                 
                 {user ? (
