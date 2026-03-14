@@ -60,8 +60,9 @@ import {
   Legend
 } from 'recharts';
 import SavingsCalculator from './components/SavingsCalculator';
+import ProductCatalog from './components/ProductCatalog';
 import CRMSystem from './components/CRMSystem';
-import { PRODUCTS, CASE_STUDIES, ADMIN_EMAILS } from './constants';
+import { CASE_STUDIES, ADMIN_EMAILS } from './constants';
 import { initGA, trackPageView } from './services/analytics';
 import { auth } from './services/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User as FirebaseUser } from 'firebase/auth';
@@ -469,29 +470,33 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const languages = [
+    { code: 'vi', label: 'VN', flag: 'vn' },
+    { code: 'en', label: 'EN', flag: 'us' },
+    { code: 'ko', label: 'KR', flag: 'kr' },
+    { code: 'ja', label: 'JP', flag: 'jp' },
+    { code: 'zh', label: 'CN', flag: 'cn' },
+    { code: 'es', label: 'ES', flag: 'es' }
+  ];
+
   const toggleLanguage = () => {
-    const newLang = i18n.language === 'vi' ? 'en' : 'vi';
-    i18n.changeLanguage(newLang);
+    const currentIndex = languages.findIndex(l => l.code === i18n.language);
+    const nextIndex = (currentIndex + 1) % languages.length;
+    i18n.changeLanguage(languages[nextIndex].code);
   };
 
-  const LanguageSwitcher = ({ className = "" }: { className?: string }) => (
-    <button 
-      onClick={toggleLanguage}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'} ${className}`}
-    >
-      {i18n.language === 'vi' ? (
-        <>
-          <img src="https://flagcdn.com/w20/vn.png" alt="VN" className="w-5 h-auto rounded-sm" />
-          <span className="text-xs font-bold uppercase">VN</span>
-        </>
-      ) : (
-        <>
-          <img src="https://flagcdn.com/w20/us.png" alt="EN" className="w-5 h-auto rounded-sm" />
-          <span className="text-xs font-bold uppercase">EN</span>
-        </>
-      )}
-    </button>
-  );
+  const LanguageSwitcher = ({ className = "" }: { className?: string }) => {
+    const currentLang = languages.find(l => l.code === i18n.language) || languages[0];
+    return (
+      <button 
+        onClick={toggleLanguage}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'} ${className}`}
+      >
+        <img src={`https://flagcdn.com/w20/${currentLang.flag}.png`} alt={currentLang.label} className="w-5 h-auto rounded-sm" />
+        <span className="text-xs font-bold uppercase">{currentLang.label}</span>
+      </button>
+    );
+  };
 
   if (currentView === 'crm') {
     if (!isAdmin) {
@@ -935,63 +940,7 @@ export default function App() {
       </section>
 
       {/* Section 2: Biomass Fuel Solution (EcoLoop) */}
-      <section id="products" className="section-padding">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-sm font-bold text-hdb-green uppercase tracking-[0.2em] mb-4">{t('ecoloop.tag')}</h2>
-            <h3 className="text-4xl md:text-5xl font-display font-bold mb-6">{t('ecoloop.title')}</h3>
-            <p className="text-hdb-dark/60 text-lg">
-              {t('ecoloop.description')}
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {PRODUCTS.map((product) => (
-              <motion.div 
-                key={product.id}
-                whileHover={{ y: -10 }}
-                className="group bg-white rounded-3xl overflow-hidden border border-hdb-earth hover:shadow-2xl transition-all duration-500"
-              >
-                <div className="h-64 overflow-hidden relative">
-                  <img 
-                    src={product.image} 
-                    alt={t(`products.${product.id.replace(/-/g, '')}.name`)} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-hdb-dark/60 to-transparent" />
-                  <div className="absolute bottom-6 left-6">
-                    <span className="bg-hdb-green text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                      {t('products.status')}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-8">
-                  <h4 className="text-2xl font-bold mb-4">{t(`products.${product.id.replace(/-/g, '')}.name`)}</h4>
-                  <p className="text-hdb-dark/60 text-sm mb-6 line-clamp-2">
-                    {t(`products.${product.id.replace(/-/g, '')}.desc`)}
-                  </p>
-                  <div className="space-y-3 mb-8">
-                    {product.specs.map((spec, i) => (
-                      <div key={i} className="flex justify-between text-sm border-b border-hdb-earth pb-2">
-                        <span className="text-hdb-dark/50">
-                          {spec.label === 'Nhiệt trị' ? t('products.specs.calorific') : 
-                           spec.label === 'Độ ẩm' ? t('products.specs.moisture') : 
-                           spec.label === 'Độ tro' ? t('products.specs.ash') : spec.label}
-                        </span>
-                        <span className="font-bold text-hdb-green">{spec.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="w-full py-4 rounded-xl border-2 border-hdb-green text-hdb-green font-bold hover:bg-hdb-green hover:text-white transition-all flex items-center justify-center gap-2">
-                    {t('products.details')} <Download className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProductCatalog onDownload={(productName) => openModal('Download', false, true, productName)} />
 
       {/* Section 3: CarbonLoop Consulting */}
       <section id="carbonloop" className="section-padding bg-hdb-dark text-white relative overflow-hidden">
@@ -1772,12 +1721,22 @@ export default function App() {
                         .map((task) => (
                         <motion.div 
                           layout
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ 
+                            opacity: task.status === 'completed' ? 0.8 : 1, 
+                            y: 0,
+                            scale: task.status === 'completed' ? 0.98 : 1,
+                            transition: { duration: 0.3, ease: "easeOut" }
+                          }}
+                          exit={{ 
+                            opacity: 0, 
+                            scale: 0.9, 
+                            x: -50, 
+                            transition: { duration: 0.2, ease: "easeIn" } 
+                          }}
                           key={task.id} 
-                          className={`p-6 rounded-2xl border border-l-4 transition-all flex items-center justify-between ${
-                            task.status === 'completed' ? 'bg-emerald-50/30 border-emerald-100 border-l-emerald-500 opacity-80' : 
+                          className={`p-6 rounded-2xl border border-l-4 transition-colors flex items-center justify-between overflow-hidden ${
+                            task.status === 'completed' ? 'bg-emerald-50/30 border-emerald-100 border-l-emerald-500' : 
                             task.status === 'overdue' ? 'bg-red-50 border-red-100 border-l-red-500' : 
                             'bg-white border-hdb-earth/30 border-l-blue-400 shadow-sm'
                           }`}

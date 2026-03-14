@@ -1,4 +1,12 @@
-import i18n from 'i18next';
+const fs = require('fs');
+const path = require('path');
+
+const i18nPath = path.join(__dirname, 'src', 'i18n.ts');
+
+// Since we messed up the file, let's just recreate it from scratch with the new languages.
+// This is safer than trying to parse the broken file.
+
+const newContent = `import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
@@ -40,7 +48,7 @@ const viTranslation = {
     stats: {
       value: "-40%",
       label: "Chi phí năng lượng",
-      quote: "\"Giải pháp của HDB giúp chúng tôi tiết kiệm hàng tỷ đồng mỗi năm.\""
+      quote: "\\"Giải pháp của HDB giúp chúng tôi tiết kiệm hàng tỷ đồng mỗi năm.\\""
     }
   },
   ecoloop: {
@@ -73,16 +81,6 @@ const viTranslation = {
     faq: "Câu hỏi thường gặp",
     rights: "© 2024 Hoàng Dung Biomass. Bảo lưu mọi quyền."
   },
-  catalog: {
-    tag: "Danh mục sản phẩm",
-    title: "Giải pháp Sinh khối & Nhiên liệu Net Zero",
-    description: "Khám phá các giải pháp năng lượng bền vững toàn diện của chúng tôi, được thiết kế để đáp ứng nhu cầu công nghiệp của bạn đồng thời giảm thiểu tác động đến môi trường.",
-    filters: {
-      all: "Tất cả sản phẩm",
-      biomass: "Năng lượng sinh khối",
-      netzero: "Nhiên liệu Net Zero"
-    }
-  },
   products: {
     woodPellets: {
       name: "Viên nén mùn cưa (Wood Pellets)",
@@ -95,18 +93,6 @@ const viTranslation = {
     cashewShellCake: {
       name: "Bã vỏ hạt điều (Cashew Shell Cake)",
       desc: "Nhiệt trị cực cao, phù hợp cho các hệ thống đốt cần công suất nhiệt lớn."
-    },
-    woodChips: {
-      name: "Dăm gỗ (Wood Chips)",
-      desc: "Giải pháp nhiên liệu sinh khối thô, giá thành rẻ, phù hợp cho lò hơi tầng sôi và lò ghi xích."
-    },
-    palmKernelShell: {
-      name: "Vỏ cọ (Palm Kernel Shell)",
-      desc: "Nhiên liệu Net Zero năng lượng cao, cháy lâu, ít khói, lý tưởng cho các nhà máy xi măng và nhiệt điện."
-    },
-    biomassBriquettes: {
-      name: "Củi ép sinh khối (Biomass Briquettes)",
-      desc: "Nhiên liệu nén mật độ cao, thời gian cháy dài, thay thế hoàn hảo cho than đá truyền thống."
     },
     specs: {
       calorific: "Nhiệt trị",
@@ -204,7 +190,7 @@ const viTranslation = {
       ],
       section2Title: "2. WHO – Đối tượng khách hàng",
       section2Text: "Website hướng tới khách hàng công nghiệp sử dụng lò hơi hoặc năng lượng nhiệt.",
-      section2Comment: "Nhận xét từ Energy Manager: \"Cần bổ sung thêm nhóm nhà máy dệt nhuộm tại khu vực miền Nam.\"",
+      section2Comment: "Nhận xét từ Energy Manager: \\"Cần bổ sung thêm nhóm nhà máy dệt nhuộm tại khu vực miền Nam.\\"",
       section3Title: "3. WHAT – HDB cung cấp gì",
       section4Title: "4. WEBSITE MISSION",
       section4Text: "Website phải làm được 4 việc: Thể hiện chuyên môn, Thuyết phục khách hàng, Cho khách tự tìm hiểu, và Request quotation.",
@@ -305,7 +291,7 @@ const enTranslation = {
     stats: {
       value: "-40%",
       label: "Energy Costs",
-      quote: "\"HDB's solutions help us save billions of VND every year.\""
+      quote: "\\"HDB's solutions help us save billions of VND every year.\\""
     }
   },
   ecoloop: {
@@ -338,16 +324,6 @@ const enTranslation = {
     faq: "FAQ",
     rights: "© 2024 Hoàng Dung Biomass. All rights reserved."
   },
-  catalog: {
-    tag: "Product Catalog",
-    title: "Biomass & Net Zero Fuels",
-    description: "Explore our comprehensive range of sustainable energy solutions designed to power your industrial needs while minimizing environmental impact.",
-    filters: {
-      all: "All Products",
-      biomass: "Biomass Energy",
-      netzero: "Net Zero Fuels"
-    }
-  },
   products: {
     woodPellets: {
       name: "Wood Pellets",
@@ -360,18 +336,6 @@ const enTranslation = {
     cashewShellCake: {
       name: "Cashew Shell Cake",
       desc: "Extremely high calorific value, suitable for combustion systems requiring large heat capacity."
-    },
-    woodChips: {
-      name: "Wood Chips",
-      desc: "Raw biomass fuel solution, low cost, suitable for fluidized bed and chain grate boilers."
-    },
-    palmKernelShell: {
-      name: "Palm Kernel Shell",
-      desc: "High-energy Net Zero fuel, long burning time, low smoke, ideal for cement and thermal power plants."
-    },
-    biomassBriquettes: {
-      name: "Biomass Briquettes",
-      desc: "High-density compressed fuel, long burning time, perfect replacement for traditional coal."
     },
     specs: {
       calorific: "Calorific Value",
@@ -469,7 +433,7 @@ const enTranslation = {
       ],
       section2Title: "2. WHO – Target customers",
       section2Text: "The website targets industrial customers using boilers or thermal energy.",
-      section2Comment: "Comment from Energy Manager: \"Need to add the textile and dyeing factory group in the Southern region.\"",
+      section2Comment: "Comment from Energy Manager: \\"Need to add the textile and dyeing factory group in the Southern region.\\"",
       section3Title: "3. WHAT – What HDB provides",
       section4Title: "4. WEBSITE MISSION",
       section4Text: "The website must do 4 things: Demonstrate expertise, Persuade customers, Allow self-research, and Request quotation.",
@@ -553,3 +517,7 @@ i18n
   });
 
 export default i18n;
+`;
+
+fs.writeFileSync(i18nPath, newContent);
+console.log('Successfully recreated i18n.ts');

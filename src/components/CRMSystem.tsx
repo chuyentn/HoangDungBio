@@ -197,6 +197,9 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
   const [sourceFilter, setSourceFilter] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('Newest');
   const [newTag, setNewTag] = useState('');
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [newActivityType, setNewActivityType] = useState<'Call' | 'Email' | 'Meeting' | 'Note'>('Note');
+  const [newActivityNote, setNewActivityNote] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState('');
@@ -247,6 +250,30 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
     } finally {
       setIsSendingEmail(false);
     }
+  };
+
+  const handleAddActivity = () => {
+    if (!selectedLead || !newActivityNote.trim()) return;
+    
+    const newActivity = {
+      date: new Date().toISOString().split('T')[0],
+      type: newActivityType,
+      note: newActivityNote.trim()
+    };
+
+    setLeads(prev => prev.map(l => {
+      if (l.id === selectedLead.id) {
+        return {
+          ...l,
+          history: [newActivity, ...l.history]
+        };
+      }
+      return l;
+    }));
+
+    setNewActivityNote('');
+    setNewActivityType('Note');
+    setIsAddingActivity(false);
   };
 
   const handleAddTag = (leadId: string, tag: string) => {
@@ -795,99 +822,244 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
+                  {/* Contact Details */}
                   <section>
-                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-3">Thông tin liên hệ</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-xl">
-                        <Mail className="w-4 h-4 text-[#6B7280]" />
-                        <span className="text-sm font-medium">{selectedLead.email}</span>
+                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <UserPlus className="w-3 h-3" /> Thông tin liên hệ
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
+                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                          <Mail className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Email</p>
+                          <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.email}</p>
+                        </div>
+                        <button 
+                          onClick={() => setIsEmailModalOpen(true)}
+                          className="px-3 py-1.5 bg-[#22C55E]/10 text-[#22C55E] rounded-lg text-xs font-bold hover:bg-[#22C55E]/20 transition-colors shrink-0"
+                        >
+                          Gửi Email
+                        </button>
                       </div>
-                      <div className="flex items-center gap-3 p-3 bg-[#F9FAFB] rounded-xl">
-                        <Phone className="w-4 h-4 text-[#6B7280]" />
-                        <span className="text-sm font-medium">{selectedLead.phone}</span>
+                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
+                        <div className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center shrink-0">
+                          <Phone className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Số điện thoại</p>
+                          <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.phone}</p>
+                        </div>
+                        <a 
+                          href={`tel:${selectedLead.phone}`}
+                          className="px-3 py-1.5 bg-[#22C55E]/10 text-[#22C55E] rounded-lg text-xs font-bold hover:bg-[#22C55E]/20 transition-colors shrink-0"
+                        >
+                          Gọi điện
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
+                        <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center shrink-0">
+                          <Building2 className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Công ty</p>
+                          <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.company}</p>
+                        </div>
                       </div>
                     </div>
                   </section>
 
+                  {/* Project & Source */}
                   <section>
-                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-3">Thông tin dự án</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 border border-[#E5E7EB] rounded-2xl">
-                        <p className="text-[10px] text-[#9CA3AF] font-bold uppercase mb-1">Giá trị dự kiến</p>
+                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Briefcase className="w-3 h-3" /> Thông tin dự án & Nguồn
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex flex-col justify-center">
+                        <div className="flex items-center gap-2 mb-2">
+                          <DollarSign className="w-4 h-4 text-[#22C55E]" />
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Giá trị dự kiến</p>
+                        </div>
                         <p className="text-lg font-bold text-[#1A1A1A]">${selectedLead.value.toLocaleString()}</p>
                       </div>
-                      <div className="p-4 border border-[#E5E7EB] rounded-2xl">
-                        <p className="text-[10px] text-[#9CA3AF] font-bold uppercase mb-1">Nguồn Lead</p>
-                        <p className="text-sm font-bold text-[#1A1A1A]">{selectedLead.source}</p>
+                      <div className="p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex flex-col justify-center">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Search className="w-4 h-4 text-blue-500" />
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Nguồn Lead</p>
+                        </div>
+                        <p className="text-sm font-bold text-[#1A1A1A] truncate">{selectedLead.source}</p>
+                      </div>
+                      <div className="col-span-2 p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex items-center gap-3">
+                        <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+                          <Clock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Liên hệ lần cuối</p>
+                          <p className="text-sm font-bold text-[#1A1A1A]">{selectedLead.lastContact}</p>
+                        </div>
                       </div>
                     </div>
                   </section>
 
+                  {/* Tags */}
                   <section>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Phân loại & Tags</h4>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {selectedLead.tags.map((tag, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-[#F3F4F6] text-[#6B7280] text-xs font-bold rounded-lg flex items-center gap-1.5 group/tag">
-                          <Tag className="w-3 h-3" />
-                          {tag}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveTag(selectedLead.id, tag);
-                            }}
-                            className="hover:text-red-500 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddTag(selectedLead.id, newTag)}
-                        placeholder="Thêm tag mới..."
-                        className="flex-1 px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-xs focus:ring-2 focus:ring-[#22C55E] outline-none"
-                      />
-                      <button 
-                        onClick={() => handleAddTag(selectedLead.id, newTag)}
-                        className="px-3 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all"
-                      >
-                        Thêm
-                      </button>
+                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Tag className="w-3 h-3" /> Phân loại & Tags
+                    </h4>
+                    <div className="bg-white p-4 border border-[#E5E7EB] rounded-xl shadow-sm">
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {selectedLead.tags.map((tag, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-[#F3F4F6] text-[#4B5563] text-xs font-bold rounded-lg flex items-center gap-2 group/tag hover:bg-[#E5E7EB] transition-colors border border-[#E5E7EB]">
+                            <Tag className="w-3 h-3 text-[#9CA3AF]" />
+                            {tag}
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveTag(selectedLead.id, tag);
+                              }}
+                              className="text-[#9CA3AF] hover:text-red-500 transition-colors ml-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                        {selectedLead.tags.length === 0 && (
+                          <span className="text-xs text-[#9CA3AF] italic py-1.5">Chưa có tag nào</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddTag(selectedLead.id, newTag)}
+                          placeholder="Thêm tag mới..."
+                          className="flex-1 px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-xs focus:ring-2 focus:ring-[#22C55E] outline-none transition-all"
+                        />
+                        <button 
+                          onClick={() => handleAddTag(selectedLead.id, newTag)}
+                          disabled={!newTag.trim()}
+                          className="px-4 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> Thêm
+                        </button>
+                      </div>
                     </div>
                   </section>
 
+                  {/* History */}
                   <section>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest">Lịch sử chăm sóc</h4>
-                      <button className="text-[10px] font-bold text-[#22C55E] hover:underline">Thêm hoạt động</button>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest flex items-center gap-2">
+                        <History className="w-3 h-3" /> Lịch sử chăm sóc
+                      </h4>
+                      <button 
+                        onClick={() => setIsAddingActivity(!isAddingActivity)}
+                        className="text-[10px] font-bold text-[#22C55E] hover:text-[#16A34A] flex items-center gap-1 bg-green-50 px-2 py-1 rounded-lg transition-colors border border-green-100"
+                      >
+                        {isAddingActivity ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {isAddingActivity ? 'Hủy' : 'Thêm hoạt động'}
+                      </button>
                     </div>
-                    <div className="space-y-4 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-[#E5E7EB]">
-                      {selectedLead.history.map((activity, i) => (
-                        <div key={i} className="flex gap-4 relative">
-                          <div className={`w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center shrink-0 z-10 ${
-                            activity.type === 'Call' ? 'bg-blue-500' :
-                            activity.type === 'Email' ? 'bg-orange-500' :
-                            activity.type === 'Meeting' ? 'bg-purple-500' :
-                            'bg-gray-500'
-                          }`}>
-                            <div className="w-1 h-1 bg-white rounded-full" />
-                          </div>
-                          <div className="flex-1 bg-[#F9FAFB] p-3 rounded-xl border border-[#E5E7EB]">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] font-bold text-[#1A1A1A]">{activity.type}</span>
-                              <span className="text-[9px] text-[#9CA3AF]">{activity.date}</span>
+
+                    <AnimatePresence>
+                      {isAddingActivity && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                          animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="bg-white p-4 rounded-xl border border-[#22C55E]/30 shadow-sm space-y-3">
+                            <div className="flex gap-2">
+                              {(['Call', 'Email', 'Meeting', 'Note'] as const).map(type => (
+                                <button
+                                  key={type}
+                                  onClick={() => setNewActivityType(type)}
+                                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
+                                    newActivityType === type 
+                                      ? 'bg-[#22C55E] text-white shadow-sm' 
+                                      : 'bg-[#F9FAFB] border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6]'
+                                  }`}
+                                >
+                                  {type === 'Call' && <Phone className="w-3 h-3" />}
+                                  {type === 'Email' && <Mail className="w-3 h-3" />}
+                                  {type === 'Meeting' && <Users className="w-3 h-3" />}
+                                  {type === 'Note' && <FileText className="w-3 h-3" />}
+                                  {type}
+                                </button>
+                              ))}
                             </div>
-                            <p className="text-xs text-[#6B7280]">{activity.note}</p>
+                            <textarea 
+                              value={newActivityNote}
+                              onChange={(e) => setNewActivityNote(e.target.value)}
+                              placeholder="Nhập nội dung hoạt động..."
+                              className="w-full px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm focus:ring-2 focus:ring-[#22C55E] outline-none transition-all resize-none min-h-[80px]"
+                            />
+                            <div className="flex justify-end">
+                              <button 
+                                onClick={handleAddActivity}
+                                disabled={!newActivityNote.trim()}
+                                className="px-4 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                              >
+                                <CheckCircle2 className="w-3 h-3" /> Lưu hoạt động
+                              </button>
+                            </div>
                           </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    
+                    <div className="relative pl-4 border-l-2 border-[#E5E7EB] space-y-6 ml-2 mt-2">
+                      {selectedLead.history.map((activity, i) => {
+                        const Icon = activity.type === 'Call' ? Phone :
+                                     activity.type === 'Email' ? Mail :
+                                     activity.type === 'Meeting' ? Users : FileText;
+                        
+                        const colorClass = activity.type === 'Call' ? 'bg-blue-500' :
+                                           activity.type === 'Email' ? 'bg-orange-500' :
+                                           activity.type === 'Meeting' ? 'bg-purple-500' : 'bg-gray-500';
+                        
+                        const bgLightClass = activity.type === 'Call' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                             activity.type === 'Email' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                             activity.type === 'Meeting' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-gray-50 text-gray-700 border-gray-200';
+
+                        return (
+                          <div key={i} className="relative">
+                            {/* Timeline Dot */}
+                            <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm ${colorClass}`} />
+                            
+                            {/* Content Card */}
+                            <div className="bg-white p-4 rounded-xl border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow group">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 border ${bgLightClass}`}>
+                                    <Icon className="w-3 h-3" />
+                                    {activity.type}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-bold text-[#9CA3AF] flex items-center gap-1.5 bg-[#F9FAFB] px-2 py-1 rounded-md border border-[#E5E7EB]">
+                                  <Clock className="w-3 h-3" />
+                                  {activity.date}
+                                </span>
+                              </div>
+                              <p className="text-sm text-[#4B5563] leading-relaxed">{activity.note}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {selectedLead.history.length === 0 && (
+                        <div className="text-center py-8 bg-[#F9FAFB] rounded-xl border border-dashed border-[#E5E7EB]">
+                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-[#E5E7EB]">
+                            <History className="w-5 h-5 text-[#9CA3AF]" />
+                          </div>
+                          <p className="text-sm font-bold text-[#4B5563] mb-1">Chưa có lịch sử</p>
+                          <p className="text-xs text-[#6B7280]">Bắt đầu ghi chú các hoạt động chăm sóc khách hàng.</p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </section>
                 </div>

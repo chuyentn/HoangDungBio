@@ -1,5 +1,3 @@
-import { Type } from "@google/genai";
-
 export interface Product {
   id: string;
   name: string;
@@ -52,6 +50,39 @@ export const PRODUCTS: Product[] = [
       { label: "Nhiệt trị", value: "4800 - 5200 kcal/kg" },
       { label: "Độ ẩm", value: "< 12%" },
       { label: "Độ tro", value: "< 5%" }
+    ]
+  },
+  {
+    id: "wood-chips",
+    name: "Dăm gỗ (Wood Chips)",
+    description: "Giải pháp nhiên liệu sinh khối thô, giá thành rẻ, phù hợp cho lò hơi tầng sôi và lò ghi xích.",
+    image: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80&w=800",
+    specs: [
+      { label: "Nhiệt trị", value: "3800 - 4200 kcal/kg" },
+      { label: "Độ ẩm", value: "25 - 35%" },
+      { label: "Độ tro", value: "< 3%" }
+    ]
+  },
+  {
+    id: "palm-kernel-shell",
+    name: "Vỏ cọ (Palm Kernel Shell)",
+    description: "Nhiên liệu Net Zero năng lượng cao, cháy lâu, ít khói, lý tưởng cho các nhà máy xi măng và nhiệt điện.",
+    image: "https://images.unsplash.com/photo-1605557202138-097824c39328?auto=format&fit=crop&q=80&w=800",
+    specs: [
+      { label: "Nhiệt trị", value: "4000 - 4600 kcal/kg" },
+      { label: "Độ ẩm", value: "< 15%" },
+      { label: "Độ tro", value: "< 5%" }
+    ]
+  },
+  {
+    id: "biomass-briquettes",
+    name: "Củi ép sinh khối (Biomass Briquettes)",
+    description: "Nhiên liệu nén mật độ cao, thời gian cháy dài, thay thế hoàn hảo cho than đá truyền thống.",
+    image: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=800",
+    specs: [
+      { label: "Nhiệt trị", value: "4000 - 4500 kcal/kg" },
+      { label: "Độ ẩm", value: "< 12%" },
+      { label: "Độ tro", value: "< 10%" }
     ]
   }
 ];
