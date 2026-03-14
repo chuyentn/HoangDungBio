@@ -47,6 +47,18 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Diagnostic route to check environment variables
+  app.get("/api/diag", (req, res) => {
+    res.json({
+      firebase: !!process.env.VITE_FIREBASE_API_KEY,
+      googleSheets: !!process.env.GOOGLE_SHEETS_WEBHOOK_URL,
+      googleSheetsComments: !!process.env.GOOGLE_SHEETS_COMMENTS_WEBHOOK_URL,
+      brevo: !!process.env.BREVO_API_KEY,
+      analytics: !!process.env.VITE_GA_MEASUREMENT_ID,
+      nodeEnv: process.env.NODE_ENV || "development"
+    });
+  });
+
   // API route for leads
   app.post("/api/leads", async (req, res) => {
     const leadData = req.body;

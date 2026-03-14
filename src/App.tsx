@@ -62,6 +62,13 @@ import {
 import SavingsCalculator from './components/SavingsCalculator';
 import ProductCatalog from './components/ProductCatalog';
 import CRMSystem from './components/CRMSystem';
+import Loading from './components/Loading';
+import Toast from './components/Toast';
+import Navbar from './components/layout/Navbar';
+import Hero from './components/layout/Hero';
+import Features from './components/layout/Features';
+import ComparisonTable from './components/layout/ComparisonTable';
+import Footer from './components/layout/Footer';
 import { CASE_STUDIES, ADMIN_EMAILS } from './constants';
 import { initGA, trackPageView } from './services/analytics';
 import { auth } from './services/firebase';
@@ -98,6 +105,20 @@ export default function App() {
   const [activeHubTab, setActiveHubTab] = useState<'brief' | 'dashboard' | 'hub'>('brief');
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  });
+
+  useEffect(() => {
+    // Simulate initial load
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
   const [editDueDate, setEditDueDate] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -230,14 +251,46 @@ export default function App() {
 
   const handleLogin = async () => {
     if (!auth) {
-      alert(i18n.language === 'vi' ? 'Cấu hình Firebase chưa hoàn tất. Vui lòng kiểm tra API Key.' : 'Firebase configuration is incomplete. Please check your API Key.');
+      setToast({
+        message: i18n.language === 'vi' ? 'Cấu hình Firebase chưa hoàn tất. Vui lòng kiểm tra API Key.' : 'Firebase configuration is incomplete. Please check your API Key.',
+        type: 'error',
+        isVisible: true
+      });
       return;
     }
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
+      setToast({
+        message: i18n.language === 'vi' ? 'Đăng nhập thành công!' : 'Login successful!',
+        type: 'success',
+        isVisible: true
+      });
+    } catch (error: any) {
       console.error("Login error:", error);
+      let errorMessage = i18n.language === 'vi' ? 'Lỗi đăng nhập: ' : 'Login error: ';
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMessage += i18n.language === 'vi' 
+          ? 'Tên miền này chưa được cấp phép trong Firebase Console. Vui lòng thêm domain vào danh sách Authorized Domains.' 
+          : 'This domain is not authorized in Firebase Console. Please add it to the Authorized Domains list.';
+      } else if (error.code === 'auth/configuration-not-found') {
+        errorMessage += i18n.language === 'vi'
+          ? 'Phương thức đăng nhập Google chưa được bật trong Firebase Console. Vui lòng vào Authentication -> Sign-in method và bật Google.'
+          : 'Google Sign-in is not enabled in Firebase Console. Please go to Authentication -> Sign-in method and enable Google.';
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage += i18n.language === 'vi'
+          ? 'Trình duyệt đã chặn cửa sổ bật lên. Vui lòng cho phép popup để đăng nhập.'
+          : 'Popup blocked by browser. Please allow popups to login.';
+      } else {
+        errorMessage += error.message;
+      }
+
+      setToast({
+        message: errorMessage,
+        type: 'error',
+        isVisible: true
+      });
     }
   };
 
@@ -433,7 +486,7 @@ export default function App() {
       });
 
       if (response.ok) {
-        alert(t('form.success'));
+        setToast({ message: t('form.success'), type: 'success', isVisible: true });
         setIsModalOpen(false);
         // Reset form
         setFormData({
@@ -450,7 +503,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Submission error:', error);
-      alert(t('form.error'));
+      setToast({ message: t('form.error'), type: 'error', isVisible: true });
     } finally {
       setIsSubmitting(false);
     }
@@ -498,422 +551,91 @@ export default function App() {
     );
   };
 
+  if (isLoading) return <Loading />;
+
   if (currentView === 'crm') {
     if (!isAdmin) {
-      setCurrentView('landing');
+      setCurrentView('main');
       return null;
     }
-    return <CRMSystem onBack={() => setCurrentView('landing')} dashboardData={dashboardData} onRefresh={fetchDashboard} lastUpdate={lastUpdate} />;
+    return <CRMSystem onBack={() => setCurrentView('main')} dashboardData={dashboardData} onRefresh={fetchDashboard} lastUpdate={lastUpdate} setToast={setToast} />;
   }
 
   return (
-    <div className="min-h-screen bg-white selection:bg-hdb-green selection:text-white">
+    <div className="min-h-screen bg-white font-sans text-hdb-dark selection:bg-hdb-green/30">
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.isVisible} 
+        onClose={() => setToast({ ...toast, isVisible: false })} 
+      />
+
       {/* Navigation */}
-      <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-6'}`}>
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-hdb-green rounded-lg flex items-center justify-center">
-              <Leaf className="text-white w-6 h-6" />
-            </div>
-            <span className={`text-xl font-display font-bold tracking-tighter ${scrolled ? 'text-hdb-dark' : 'text-white'}`}>
-              HDB <span className="text-hdb-accent">Biomass</span>
-            </span>
-          </div>
+      <Navbar 
+        scrolled={scrolled}
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+        user={user}
+        isAdmin={isAdmin}
+        handleLogin={handleLogin}
+        handleLogout={handleLogout}
+        setCurrentView={setCurrentView}
+        openModal={openModal}
+        LanguageSwitcher={LanguageSwitcher}
+      />
 
-          <div className="hidden md:flex items-center gap-8">
-            {isAdmin && (
-              <button 
-                onClick={() => setCurrentView('crm')}
-                className={`text-sm font-bold flex items-center gap-2 transition-colors ${scrolled ? 'text-hdb-green hover:text-hdb-accent' : 'text-white hover:text-hdb-accent'}`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                {t('nav.crmDashboard')}
-              </button>
-            )}
-            {[
-              { key: 'solutions', label: t('nav.solutions') },
-              { key: 'products', label: t('nav.products') },
-              { key: 'carbonloop', label: t('nav.carbonloop') },
-              { key: 'projects', label: t('nav.projects') },
-              { key: 'contact', label: t('nav.contact') }
-            ].map((item) => (
-              <a 
-                key={item.key} 
-                href={`#${item.key}`} 
-                className={`text-sm font-medium hover:text-hdb-accent transition-colors ${scrolled ? 'text-hdb-dark' : 'text-white'}`}
-              >
-                {item.label}
-              </a>
-            ))}
-            <LanguageSwitcher />
-            
-            {user ? (
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-hdb-green/20 flex items-center justify-center overflow-hidden border border-hdb-green/30">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-4 h-4 text-hdb-green" />
-                    )}
-                  </div>
-                  <span className={`text-xs font-bold ${scrolled ? 'text-hdb-dark' : 'text-white'}`}>{user.displayName?.split(' ')[0]}</span>
-                </div>
-                <button onClick={handleLogout} className={`p-2 rounded-full hover:bg-red-500/10 text-red-500 transition-all`} title="Logout">
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={handleLogin}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : 'border-white/20 text-white hover:bg-white/10'}`}
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase">{i18n.language === 'vi' ? 'Đăng nhập' : 'Login'}</span>
-                </button>
-                <button 
-                  onClick={handleLogin}
-                  className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all ${scrolled ? 'border-hdb-dark/20 text-hdb-dark hover:bg-hdb-dark/5' : ''}`}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase">{i18n.language === 'vi' ? 'Đăng ký' : 'Register'}</span>
-                </button>
-              </div>
-            )}
-
-            <button 
-              onClick={() => openModal('Báo giá nhanh')}
-              className="bg-hdb-green text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-hdb-accent transition-all shadow-lg shadow-hdb-green/20"
-            >
-              {t('nav.getQuote')}
-            </button>
-          </div>
-
-          <button className="md:hidden text-hdb-dark" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X className={scrolled ? 'text-hdb-dark' : 'text-white'} /> : <Menu className={scrolled ? 'text-hdb-dark' : 'text-white'} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-t border-hdb-earth overflow-hidden"
-            >
-              <div className="px-6 py-8 flex flex-col gap-6">
-                {[
-                  { key: 'solutions', label: t('nav.solutions') },
-                  { key: 'products', label: t('nav.products') },
-                  { key: 'carbonloop', label: t('nav.carbonloop') },
-                  { key: 'projects', label: t('nav.projects') },
-                  { key: 'contact', label: t('nav.contact') }
-                ].map((item) => (
-                  <a 
-                    key={item.key} 
-                    href={`#${item.key}`} 
-                    onClick={() => setIsMenuOpen(false)}
-                    className="text-lg font-bold text-hdb-dark hover:text-hdb-green transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-                {isAdmin && (
-                  <button 
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      setCurrentView('crm');
-                    }}
-                    className="text-lg font-bold text-hdb-green flex items-center gap-2 transition-colors"
-                  >
-                    <LayoutDashboard className="w-5 h-5" />
-                    {t('nav.crmDashboard')}
-                  </button>
-                )}
-                <div className="pt-4 border-t border-hdb-earth flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-hdb-dark/40 uppercase tracking-widest">{i18n.language === 'vi' ? 'Ngôn ngữ' : 'Language'}</span>
-                    <LanguageSwitcher className="!border-hdb-dark/20 !text-hdb-dark" />
-                  </div>
-                  
-                  {user ? (
-                    <div className="flex items-center justify-between p-4 bg-hdb-earth/30 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-hdb-green/20 flex items-center justify-center overflow-hidden">
-                          {user.photoURL ? <img src={user.photoURL} alt="User" className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-hdb-green" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-hdb-dark">{user.displayName || 'User'}</p>
-                          <p className="text-[10px] text-hdb-dark/50">{user.email}</p>
-                        </div>
-                      </div>
-                      <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-50 text-xl rounded-lg">
-                        <LogOut className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        onClick={() => { setIsMenuOpen(false); handleLogin(); }}
-                        className="flex items-center justify-center gap-2 py-3 border border-hdb-dark/20 rounded-xl font-bold text-hdb-dark"
-                      >
-                        <LogIn className="w-4 h-4" />
-                        {i18n.language === 'vi' ? 'Đăng nhập' : 'Login'}
-                      </button>
-                      <button 
-                        onClick={() => { setIsMenuOpen(false); handleLogin(); }}
-                        className="flex items-center justify-center gap-2 py-3 bg-hdb-dark text-white rounded-xl font-bold"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        {i18n.language === 'vi' ? 'Đăng ký' : 'Register'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <button 
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    openModal('Báo giá nhanh');
-                  }}
-                  className="w-full bg-hdb-green text-white py-4 rounded-xl font-bold shadow-lg shadow-hdb-green/20"
-                >
-                  {t('nav.getQuote')}
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
-
-      {/* Section: Dynamic Pricing */}
-      <section className="py-12 bg-hdb-dark border-y border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-hdb-accent/20 flex items-center justify-center">
-                <TrendingUp className="text-hdb-accent w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-white font-bold text-lg flex items-center gap-2">
-                  {i18n.language === 'vi' ? 'Giá thị trường thời gian thực' : 'Real-time Market Pricing'}
-                  <RefreshCw className="w-3 h-3 text-hdb-green animate-spin" />
-                </h4>
-                <p className="text-white/40 text-xs uppercase tracking-widest">
-                  {i18n.language === 'vi' ? 'Cập nhật:' : 'Last update:'} {lastUpdate.toLocaleTimeString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full md:w-auto">
-              {[
-                { name: t('products.woodPellets.name'), price: prices.woodPellets, unit: 'USD/Ton' },
-                { name: t('products.riceHuskPellets.name'), price: prices.riceHuskPellets, unit: 'USD/Ton' },
-                { name: t('products.cashewShellCake.name'), price: prices.cashewShellCake, unit: 'USD/Ton' }
-              ].map((item, i) => (
-                <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-2xl flex flex-col items-center min-w-[180px]">
-                  <span className="text-[10px] font-bold text-white/40 uppercase mb-1 text-center">{item.name}</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-display font-bold text-hdb-accent">${item.price.toFixed(2)}</span>
-                    <span className="text-[10px] text-white/60">{item.unit}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center overflow-hidden bg-hdb-dark">
-        <div className="absolute inset-0 opacity-40">
-          <img 
-            src="https://images.unsplash.com/photo-1473081556163-2a17de81fc97?auto=format&fit=crop&q=80&w=2000" 
-            alt="Biomass Energy" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-hdb-dark via-hdb-dark/80 to-transparent" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-6 w-full">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-3xl"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-hdb-green/20 border border-hdb-green/30 text-hdb-green mb-8">
-              <span className="w-2 h-2 rounded-full bg-hdb-green animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-widest text-white/80">{t('hero.badge')}</span>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-display font-bold text-white leading-[1.1] mb-6">
-              {t('hero.title')} <br /> 
-              <span className="text-hdb-accent italic">{t('hero.subtitle')}</span>
-            </h1>
-            <p className="text-xl text-white/70 mb-10 leading-relaxed max-w-2xl">
-              {t('hero.description')}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={() => {
-                  const el = document.getElementById('savings-calculator');
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="bg-hdb-green text-white px-8 py-4 rounded-xl font-bold hover:bg-hdb-accent transition-all flex items-center justify-center gap-2 group"
-              >
-                {i18n.language === 'vi' ? 'Tính toán tiết kiệm' : 'Calculate Savings'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button 
-                onClick={() => openModal('Net Zero Roadmap')}
-                className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-4 rounded-xl font-bold hover:bg-white/20 transition-all"
-              >
-                {t('hero.cta2')}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 hidden md:block">
-          <motion.div 
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center p-1"
-          >
-            <div className="w-1 h-2 bg-white/50 rounded-full" />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Section 1: Factory Energy Problem */}
-      <section id="solutions" className="section-padding bg-hdb-earth/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-sm font-bold text-hdb-green uppercase tracking-[0.2em] mb-4">{t('challenges.tag')}</h2>
-              <h3 className="text-4xl md:text-5xl font-display font-bold mb-8 leading-tight">
-                {t('challenges.title')}
-              </h3>
-              <div className="space-y-6">
-                {[
-                  { icon: TrendingDown, title: t('challenges.item1.title'), desc: t('challenges.item1.desc') },
-                  { icon: CloudOff, title: t('challenges.item2.title'), desc: t('challenges.item2.desc') },
-                  { icon: Factory, title: t('challenges.item3.title'), desc: t('challenges.item3.desc') }
-                ].map((item, i) => (
-                  <motion.div 
-                    key={i}
-                    whileHover={{ x: 10 }}
-                    className="flex gap-6 p-6 bg-white rounded-2xl shadow-sm border border-hdb-earth"
-                  >
-                    <div className="w-14 h-14 bg-hdb-earth rounded-xl flex items-center justify-center shrink-0">
-                      <item.icon className="text-hdb-green w-7 h-7" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold mb-2">{item.title}</h4>
-                      <p className="text-hdb-dark/60 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="relative">
-              <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
-                <img 
-                  src="https://images.unsplash.com/photo-1516937941344-00b4e0337589?auto=format&fit=crop&q=80&w=1000" 
-                  alt="Industrial Factory" 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="absolute -bottom-10 -left-10 glass-card p-8 rounded-2xl max-w-xs hidden md:block">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-hdb-green rounded-full flex items-center justify-center">
-                    <BarChart3 className="text-white w-6 h-6" />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="main"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Section: Dynamic Pricing */}
+          <section className="py-12 bg-hdb-dark border-y border-white/5 pt-32">
+            <div className="max-w-7xl mx-auto px-6">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-hdb-accent/20 flex items-center justify-center">
+                    <TrendingUp className="text-hdb-accent w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-hdb-green">{t('challenges.stats.value')}</p>
-                    <p className="text-xs font-bold uppercase text-hdb-dark/50">{t('challenges.stats.label')}</p>
+                    <h4 className="text-white font-bold text-lg flex items-center gap-2">
+                      {i18n.language === 'vi' ? 'Giá thị trường thời gian thực' : 'Real-time Market Pricing'}
+                      <RefreshCw className="w-3 h-3 text-hdb-green animate-spin" />
+                    </h4>
+                    <p className="text-white/40 text-xs uppercase tracking-widest">
+                      {i18n.language === 'vi' ? 'Cập nhật:' : 'Last update:'} {lastUpdate.toLocaleTimeString()}
+                    </p>
                   </div>
                 </div>
-                <p className="text-sm text-hdb-dark/70 italic">
-                  {t('challenges.stats.quote')}
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full md:w-auto">
+                  {[
+                    { name: t('products.woodPellets.name'), price: prices.woodPellets, unit: 'USD/Ton' },
+                    { name: t('products.riceHuskPellets.name'), price: prices.riceHuskPellets, unit: 'USD/Ton' },
+                    { name: t('products.cashewShellCake.name'), price: prices.cashewShellCake, unit: 'USD/Ton' }
+                  ].map((item, i) => (
+                    <div key={i} className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-2xl flex flex-col items-center min-w-[180px]">
+                      <span className="text-[10px] font-bold text-white/40 uppercase mb-1 text-center">{item.name}</span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-display font-bold text-hdb-accent">${item.price.toFixed(2)}</span>
+                        <span className="text-[10px] text-white/60">{item.unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      <SavingsCalculator onOpenModal={openModal} />
+          <Hero onOpenModal={openModal} />
+          
+          <Features />
 
-      {/* Fuel Comparison Table */}
-      <section className="section-padding bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-sm font-bold text-hdb-green uppercase tracking-[0.2em] mb-4">
-              {i18n.language === 'vi' ? 'So sánh hiệu quả' : 'Efficiency Comparison'}
-            </h2>
-            <h3 className="text-4xl md:text-5xl font-display font-bold mb-6">
-              {i18n.language === 'vi' ? 'Tại sao chọn Biomass?' : 'Why Choose Biomass?'}
-            </h3>
-            <p className="text-hdb-dark/60 text-lg">
-              {i18n.language === 'vi' 
-                ? 'So sánh trực tiếp giữa nhiên liệu sinh khối và các loại nhiên liệu truyền thống.' 
-                : 'Direct comparison between biomass fuel and traditional fuels.'}
-            </p>
-          </div>
+          <SavingsCalculator onOpenModal={openModal} />
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-hdb-earth">
-                  <th className="py-6 px-4 text-left text-hdb-dark/40 font-bold uppercase tracking-widest text-xs">{i18n.language === 'vi' ? 'Chỉ số' : 'Metric'}</th>
-                  <th className="py-6 px-4 text-center bg-hdb-green/5 text-hdb-green font-bold uppercase tracking-widest text-xs">Biomass (EcoLoop™)</th>
-                  <th className="py-6 px-4 text-center text-hdb-dark/40 font-bold uppercase tracking-widest text-xs">{i18n.language === 'vi' ? 'Than đá' : 'Coal'}</th>
-                  <th className="py-6 px-4 text-center text-hdb-dark/40 font-bold uppercase tracking-widest text-xs">DO / FO Oil</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hdb-earth/30">
-                {[
-                  { 
-                    label: i18n.language === 'vi' ? 'Chi phí năng lượng' : 'Energy Cost', 
-                    biomass: i18n.language === 'vi' ? 'Thấp nhất' : 'Lowest', 
-                    coal: i18n.language === 'vi' ? 'Trung bình' : 'Medium', 
-                    oil: i18n.language === 'vi' ? 'Rất cao' : 'Very High' 
-                  },
-                  { 
-                    label: i18n.language === 'vi' ? 'Phát thải CO2' : 'CO2 Emissions', 
-                    biomass: i18n.language === 'vi' ? 'Trung hòa (~0)' : 'Neutral (~0)', 
-                    coal: i18n.language === 'vi' ? 'Rất cao' : 'Very High', 
-                    oil: i18n.language === 'vi' ? 'Cao' : 'High' 
-                  },
-                  { 
-                    label: i18n.language === 'vi' ? 'Tro xỉ' : 'Ash Content', 
-                    biomass: '< 1-3%', 
-                    coal: '15-30%', 
-                    oil: 'Negligible' 
-                  },
-                  { 
-                    label: i18n.language === 'vi' ? 'Tác động lò hơi' : 'Boiler Impact', 
-                    biomass: i18n.language === 'vi' ? 'Sạch, ít ăn mòn' : 'Clean, low corrosion', 
-                    coal: i18n.language === 'vi' ? 'Ăn mòn cao' : 'High corrosion', 
-                    oil: i18n.language === 'vi' ? 'Đóng cặn' : 'Soof build-up' 
-                  }
-                ].map((row, i) => (
-                  <tr key={i} className="hover:bg-hdb-earth/5 transition-colors">
-                    <td className="py-6 px-4 font-bold text-hdb-dark">{row.label}</td>
-                    <td className="py-6 px-4 text-center bg-hdb-green/5 font-bold text-hdb-green">{row.biomass}</td>
-                    <td className="py-6 px-4 text-center text-hdb-dark/60">{row.coal}</td>
-                    <td className="py-6 px-4 text-center text-hdb-dark/60">{row.oil}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+          <ComparisonTable />
 
       {/* Partners & Certifications */}
       <section className="py-12 bg-white border-y border-hdb-earth/30">
@@ -1158,7 +880,11 @@ export default function App() {
                   className="space-y-6"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    alert(t('form.success'));
+                    setToast({
+                      message: t('form.success'),
+                      type: 'success',
+                      isVisible: true
+                    });
                     (e.target as HTMLFormElement).reset();
                   }}
                 >
@@ -2178,64 +1904,10 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      <footer className="bg-hdb-dark text-white pt-20 pb-10">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-12 mb-20">
-            <div className="col-span-2">
-              <div className="flex items-center gap-2 mb-8">
-                <div className="w-10 h-10 bg-hdb-green rounded-lg flex items-center justify-center">
-                  <Leaf className="text-white w-6 h-6" />
-                </div>
-                <span className="text-2xl font-display font-bold tracking-tighter">
-                  HDB <span className="text-hdb-accent">Biomass</span>
-                </span>
-              </div>
-              <p className="text-white/50 max-w-sm mb-8 leading-relaxed">
-                {t('footer.description')}
-              </p>
-              <div className="flex gap-4">
-                {['Facebook', 'LinkedIn', 'Alibaba', 'TikTok'].map(social => (
-                  <a key={social} href="#" className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-hdb-accent hover:border-hdb-accent transition-all">
-                    <span className="sr-only">{social}</span>
-                    <Globe className="w-5 h-5" />
-                  </a>
-                ))}
-              </div>
-            </div>
-            
-            <div>
-              <h4 className="font-bold mb-8 uppercase tracking-widest text-xs text-hdb-accent">{t('footer.solutions')}</h4>
-              <ul className="space-y-4 text-white/60 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">{i18n.language === 'vi' ? 'Tư vấn CarbonLoop™' : 'CarbonLoop™ Consulting'}</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">{i18n.language === 'vi' ? 'Cung ứng EcoLoop™' : 'EcoLoop™ Supply'}</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">{t('projects.tags.energyAudit')}</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">{i18n.language === 'vi' ? 'Tối ưu hóa lò hơi' : 'Boiler Optimization'}</a></li>
-              </ul>
-            </div>
+        </motion.div>
+      </AnimatePresence>
 
-            <div>
-              <h4 className="font-bold mb-8 uppercase tracking-widest text-xs text-hdb-accent">{t('footer.support')}</h4>
-              <ul className="space-y-4 text-white/60 text-sm">
-                <li><button onClick={() => setCurrentView('crm')} className="hover:text-white transition-colors">{t('nav.crmDashboard')}</button></li>
-                <li><button onClick={() => openModal('Contact Support')} className="hover:text-white transition-colors">{t('footer.contactSupport')}</button></li>
-                <li><button onClick={() => openModal('Request Quote')} className="hover:text-white transition-colors">{t('footer.quote')}</button></li>
-                <li><button onClick={() => openModal('Download Datasheet', false, true)} className="hover:text-white transition-colors">{t('footer.datasheet')}</button></li>
-                <li><a href="#" className="hover:text-white transition-colors">{t('footer.faq')}</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-xs text-white/30 font-bold uppercase tracking-widest">
-            <p>{t('footer.rights')}</p>
-            <div className="flex gap-8">
-              <a href="#" className="hover:text-white">Privacy Policy</a>
-              <a href="#" className="hover:text-white">Terms of Service</a>
-              <a href="#" className="hover:text-white">MST: 3604011176</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer openModal={openModal} />
 
       {/* Consultation Modal */}
       <AnimatePresence>

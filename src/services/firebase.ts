@@ -16,11 +16,15 @@ let authInstance: Auth | null = null;
 // Only initialize if API key is present to avoid "invalid-api-key" error on startup
 if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined") {
   try {
+    console.log("Initializing Firebase with project:", firebaseConfig.projectId);
     app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
     authInstance = getAuth(app);
+    console.log("Firebase Auth initialized successfully");
   } catch (error) {
     console.error("Firebase initialization failed:", error);
   }
+} else {
+  console.warn("Firebase API Key is missing or undefined. Auth will not be available.");
 }
 
 // Export a proxy or a safe getter for auth

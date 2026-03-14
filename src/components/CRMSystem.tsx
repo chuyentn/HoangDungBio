@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sendEmail } from '../services/emailService';
 import { 
@@ -186,7 +186,16 @@ const STATUS_COLORS = {
   'Closed': 'bg-green-100 text-green-700 border-green-200',
 };
 
-export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate }: { onBack: () => void, dashboardData?: any, onRefresh?: () => Promise<void>, lastUpdate?: Date }) {
+const STATUS_LABELS = {
+  'New': 'Mới',
+  'Contacted': 'Đã liên hệ',
+  'Qualified': 'Tiềm năng',
+  'Proposal': 'Báo giá',
+  'Negotiation': 'Thương thảo',
+  'Closed': 'Đã chốt',
+};
+
+export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate, setToast }: { onBack: () => void, dashboardData?: any, onRefresh?: () => Promise<void>, lastUpdate?: Date, setToast: (toast: any) => void }) {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'leads'>('dashboard');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
@@ -198,6 +207,20 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
   const [sortBy, setSortBy] = useState<string>('Newest');
   const [newTag, setNewTag] = useState('');
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [diagStatus, setDiagStatus] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchDiag = async () => {
+      try {
+        const res = await fetch('/api/diag');
+        const data = await res.json();
+        setDiagStatus(data);
+      } catch (err) {
+        console.error("Failed to fetch diagnostics:", err);
+      }
+    };
+    fetchDiag();
+  }, []);
   const [newActivityType, setNewActivityType] = useState<'Call' | 'Email' | 'Meeting' | 'Note'>('Note');
   const [newActivityNote, setNewActivityNote] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -239,14 +262,26 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
           }
           return l;
         }));
+        setToast({
+          message: "Email đã được gửi thành công!",
+          type: 'success',
+          isVisible: true
+        });
         setIsEmailModalOpen(false);
-        alert("Email đã được gửi thành công!");
       } else {
-        alert("Lỗi khi gửi email: " + result.error);
+        setToast({
+          message: "Lỗi khi gửi email: " + result.error,
+          type: 'error',
+          isVisible: true
+        });
       }
     } catch (error) {
       console.error("Error in handleSendEmail:", error);
-      alert("Đã có lỗi xảy ra khi gửi email.");
+      setToast({
+        message: "Đã có lỗi xảy ra khi gửi email.",
+        type: 'error',
+        isVisible: true
+      });
     } finally {
       setIsSendingEmail(false);
     }
@@ -439,6 +474,43 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                     {isRefreshing ? 'Đang làm mới...' : 'Làm mới dữ liệu'}
                   </button>
                 </div>
+
+                {/* System Status Banner */}
+                {diagStatus && (
+                  <div className="bg-white p-4 rounded-2xl border border-[#E5E7EB] shadow-sm flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs font-bold text-[#1A1A1A] uppercase tracking-wider">Trạng thái hệ thống:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {[
+                        { label: 'Firebase', status: diagStatus.firebase },
+                        { label: 'Google Sheets', status: diagStatus.googleSheets },
+                        { label: 'Brevo Email', status: diagStatus.brevo },
+                        { label: 'Analytics', status: diagStatus.analytics }
+                      ].map((api, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${api.status ? 'bg-green-500' : 'bg-red-500'}`} />
+                          <span className={`text-[10px] font-bold ${api.status ? 'text-[#1A1A1A]' : 'text-red-500'}`}>
+                            {api.label}: {api.status ? 'Đã kết nối' : 'Chưa cấu hình'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="ml-auto flex items-center gap-4">
+                      <div className="flex items-center gap-2 text-[10px] text-[#6B7280]">
+                        <span className="font-bold uppercase">Môi trường:</span>
+                        <span className="bg-[#F3F4F6] px-2 py-0.5 rounded-full font-mono">{diagStatus.nodeEnv}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
+                        <AlertCircle className="w-3 h-3" />
+                        <span className="font-bold">Lưu ý:</span>
+                        <span>Thêm <code className="bg-white px-1 rounded border border-blue-200">{window.location.hostname}</code> vào Authorized Domains trong Firebase Console.</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   {displayStats.map((stat, i) => (
@@ -653,8 +725,16 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                               <p className="text-[10px] text-[#9CA3AF]">{lead.source}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${STATUS_COLORS[lead.status]}`}>
-                                {lead.status}
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${STATUS_COLORS[lead.status]}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  lead.status === 'New' ? 'bg-blue-500' :
+                                  lead.status === 'Contacted' ? 'bg-yellow-500' :
+                                  lead.status === 'Qualified' ? 'bg-purple-500' :
+                                  lead.status === 'Proposal' ? 'bg-orange-500' :
+                                  lead.status === 'Negotiation' ? 'bg-indigo-500' :
+                                  'bg-green-500'
+                                }`} />
+                                {STATUS_LABELS[lead.status as keyof typeof STATUS_LABELS]}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -701,7 +781,7 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                             >
                               <div className="flex items-center justify-between mb-4 px-2">
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-bold text-sm text-[#1A1A1A]">{status}</h4>
+                                  <h4 className="font-bold text-sm text-[#1A1A1A]">{STATUS_LABELS[status as keyof typeof STATUS_LABELS]}</h4>
                                   <span className="bg-[#E5E7EB] text-[#6B7280] text-[10px] font-bold px-2 py-0.5 rounded-full">
                                     {filteredLeads.filter(l => l.status === status).length}
                                   </span>
@@ -793,140 +873,148 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-50 flex flex-col"
+              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white shadow-2xl z-50 flex flex-col"
             >
-              <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between">
-                <h2 className="font-bold text-lg">Chi tiết khách hàng</h2>
+              {/* Header */}
+              <div className="p-6 border-b border-[#E5E7EB] flex items-center justify-between bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-[#22C55E]/10 rounded-2xl flex items-center justify-center text-[#22C55E] font-bold text-xl">
+                    {selectedLead.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-lg text-[#1A1A1A]">{selectedLead.name}</h2>
+                    <p className="text-xs text-[#6B7280]">{selectedLead.company}</p>
+                  </div>
+                </div>
                 <button 
                   onClick={() => setSelectedLeadId(null)}
-                  className="p-2 hover:bg-[#F3F4F6] rounded-lg transition-colors"
+                  className="p-2 hover:bg-[#F3F4F6] rounded-xl transition-colors text-[#6B7280]"
                 >
-                  <ArrowLeft className="w-5 h-5 rotate-180" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="flex flex-col items-center text-center mb-8">
-                  <div className="w-20 h-20 bg-[#22C55E]/10 rounded-3xl flex items-center justify-center text-[#22C55E] font-bold text-2xl mb-4">
-                    {selectedLead.name.charAt(0)}
+              <div className="flex-1 overflow-y-auto">
+                {/* Quick Stats Bar */}
+                <div className="grid grid-cols-3 divide-x divide-[#E5E7EB] border-b border-[#E5E7EB] bg-[#F9FAFB]">
+                  <div className="p-4 text-center">
+                    <p className="text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">Giá trị</p>
+                    <p className="text-sm font-bold text-[#1A1A1A]">${selectedLead.value.toLocaleString()}</p>
                   </div>
-                  <h3 className="text-xl font-bold text-[#1A1A1A]">{selectedLead.name}</h3>
-                  <p className="text-sm text-[#6B7280] mb-4">{selectedLead.company}</p>
-                  <div className="flex gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[selectedLead.status]}`}>
-                      {selectedLead.status}
+                  <div className="p-4 text-center">
+                    <p className="text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">Trạng thái</p>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_COLORS[selectedLead.status]}`}>
+                      <span className={`w-1 h-1 rounded-full ${
+                        selectedLead.status === 'New' ? 'bg-blue-500' :
+                        selectedLead.status === 'Contacted' ? 'bg-yellow-500' :
+                        selectedLead.status === 'Qualified' ? 'bg-purple-500' :
+                        selectedLead.status === 'Proposal' ? 'bg-orange-500' :
+                        selectedLead.status === 'Negotiation' ? 'bg-indigo-500' :
+                        'bg-green-500'
+                      }`} />
+                      {STATUS_LABELS[selectedLead.status as keyof typeof STATUS_LABELS]}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${PRIORITY_COLORS[selectedLead.priority]}`}>
+                  </div>
+                  <div className="p-4 text-center">
+                    <p className="text-[10px] font-bold text-[#9CA3AF] uppercase mb-1">Ưu tiên</p>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${PRIORITY_COLORS[selectedLead.priority]}`}>
                       {selectedLead.priority}
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-8">
-                  {/* Contact Details */}
+                <div className="p-6 space-y-8">
+                  {/* Contact Information */}
                   <section>
-                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <UserPlus className="w-3 h-3" /> Thông tin liên hệ
-                    </h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
-                        <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                          <Mail className="w-4 h-4" />
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest flex items-center gap-2">
+                        <UserPlus className="w-3 h-3" /> Thông tin liên hệ
+                      </h4>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4 p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm hover:border-[#22C55E]/30 transition-all group">
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <Mail className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Email</p>
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase mb-0.5">Email</p>
                           <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.email}</p>
                         </div>
                         <button 
-                          onClick={() => setIsEmailModalOpen(true)}
-                          className="px-3 py-1.5 bg-[#22C55E]/10 text-[#22C55E] rounded-lg text-xs font-bold hover:bg-[#22C55E]/20 transition-colors shrink-0"
+                          onClick={handleOpenEmailModal}
+                          className="p-2 bg-[#22C55E]/10 text-[#22C55E] rounded-lg hover:bg-[#22C55E]/20 transition-colors"
                         >
-                          Gửi Email
+                          <Send className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
-                        <div className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center shrink-0">
-                          <Phone className="w-4 h-4" />
+
+                      <div className="flex items-center gap-4 p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm hover:border-[#22C55E]/30 transition-all group">
+                        <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <Phone className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Số điện thoại</p>
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase mb-0.5">Số điện thoại</p>
                           <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.phone}</p>
                         </div>
                         <a 
                           href={`tel:${selectedLead.phone}`}
-                          className="px-3 py-1.5 bg-[#22C55E]/10 text-[#22C55E] rounded-lg text-xs font-bold hover:bg-[#22C55E]/20 transition-colors shrink-0"
+                          className="p-2 bg-[#22C55E]/10 text-[#22C55E] rounded-lg hover:bg-[#22C55E]/20 transition-colors"
                         >
-                          Gọi điện
+                          <Phone className="w-4 h-4" />
                         </a>
                       </div>
-                      <div className="flex items-center gap-3 p-3 bg-white border border-[#E5E7EB] rounded-xl shadow-sm hover:border-[#22C55E]/30 transition-colors">
-                        <div className="w-8 h-8 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center shrink-0">
-                          <Building2 className="w-4 h-4" />
+
+                      <div className="flex items-center gap-4 p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm hover:border-[#22C55E]/30 transition-all group">
+                        <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <Building2 className="w-5 h-5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Công ty</p>
+                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase mb-0.5">Công ty</p>
                           <p className="text-sm font-medium text-[#1A1A1A] truncate">{selectedLead.company}</p>
                         </div>
                       </div>
                     </div>
                   </section>
 
-                  {/* Project & Source */}
-                  <section>
-                    <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Briefcase className="w-3 h-3" /> Thông tin dự án & Nguồn
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                          <DollarSign className="w-4 h-4 text-[#22C55E]" />
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Giá trị dự kiến</p>
-                        </div>
-                        <p className="text-lg font-bold text-[#1A1A1A]">${selectedLead.value.toLocaleString()}</p>
+                  {/* Source & Last Contact */}
+                  <section className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Search className="w-4 h-4 text-blue-500" />
+                        <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Nguồn Lead</p>
                       </div>
-                      <div className="p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex flex-col justify-center">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Search className="w-4 h-4 text-blue-500" />
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Nguồn Lead</p>
-                        </div>
-                        <p className="text-sm font-bold text-[#1A1A1A] truncate">{selectedLead.source}</p>
+                      <p className="text-sm font-bold text-[#1A1A1A]">{selectedLead.source}</p>
+                    </div>
+                    <div className="p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-orange-500" />
+                        <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Liên hệ cuối</p>
                       </div>
-                      <div className="col-span-2 p-4 bg-white border border-[#E5E7EB] rounded-xl shadow-sm flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
-                          <Clock className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-[#9CA3AF] font-bold uppercase">Liên hệ lần cuối</p>
-                          <p className="text-sm font-bold text-[#1A1A1A]">{selectedLead.lastContact}</p>
-                        </div>
-                      </div>
+                      <p className="text-sm font-bold text-[#1A1A1A]">{selectedLead.lastContact}</p>
                     </div>
                   </section>
 
-                  {/* Tags */}
+                  {/* Tags Section */}
                   <section>
                     <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest mb-4 flex items-center gap-2">
                       <Tag className="w-3 h-3" /> Phân loại & Tags
                     </h4>
-                    <div className="bg-white p-4 border border-[#E5E7EB] rounded-xl shadow-sm">
+                    <div className="bg-[#F9FAFB] p-4 rounded-2xl border border-[#E5E7EB]">
                       <div className="flex flex-wrap gap-2 mb-4">
                         {selectedLead.tags.map((tag, i) => (
-                          <span key={i} className="px-3 py-1.5 bg-[#F3F4F6] text-[#4B5563] text-xs font-bold rounded-lg flex items-center gap-2 group/tag hover:bg-[#E5E7EB] transition-colors border border-[#E5E7EB]">
+                          <span key={i} className="px-3 py-1.5 bg-white text-[#4B5563] text-xs font-bold rounded-xl flex items-center gap-2 border border-[#E5E7EB] shadow-sm group/tag">
                             <Tag className="w-3 h-3 text-[#9CA3AF]" />
                             {tag}
                             <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveTag(selectedLead.id, tag);
-                              }}
-                              className="text-[#9CA3AF] hover:text-red-500 transition-colors ml-1"
+                              onClick={() => handleRemoveTag(selectedLead.id, tag)}
+                              className="text-[#9CA3AF] hover:text-red-500 transition-colors"
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </span>
                         ))}
                         {selectedLead.tags.length === 0 && (
-                          <span className="text-xs text-[#9CA3AF] italic py-1.5">Chưa có tag nào</span>
+                          <p className="text-xs text-[#9CA3AF] italic">Chưa có tag nào</p>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -936,30 +1024,30 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleAddTag(selectedLead.id, newTag)}
                           placeholder="Thêm tag mới..."
-                          className="flex-1 px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-xs focus:ring-2 focus:ring-[#22C55E] outline-none transition-all"
+                          className="flex-1 px-4 py-2 bg-white border border-[#E5E7EB] rounded-xl text-xs focus:ring-2 focus:ring-[#22C55E] outline-none transition-all"
                         />
                         <button 
                           onClick={() => handleAddTag(selectedLead.id, newTag)}
                           disabled={!newTag.trim()}
-                          className="px-4 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                          className="px-4 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50"
                         >
-                          <Plus className="w-3 h-3" /> Thêm
+                          Thêm
                         </button>
                       </div>
                     </div>
                   </section>
 
-                  {/* History */}
+                  {/* Activity Timeline */}
                   <section>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-6">
                       <h4 className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest flex items-center gap-2">
                         <History className="w-3 h-3" /> Lịch sử chăm sóc
                       </h4>
                       <button 
                         onClick={() => setIsAddingActivity(!isAddingActivity)}
-                        className="text-[10px] font-bold text-[#22C55E] hover:text-[#16A34A] flex items-center gap-1 bg-green-50 px-2 py-1 rounded-lg transition-colors border border-green-100"
+                        className="text-xs font-bold text-[#22C55E] flex items-center gap-1 hover:text-[#16A34A] transition-colors"
                       >
-                        {isAddingActivity ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {isAddingActivity ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                         {isAddingActivity ? 'Hủy' : 'Thêm hoạt động'}
                       </button>
                     </div>
@@ -967,52 +1055,44 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                     <AnimatePresence>
                       {isAddingActivity && (
                         <motion.div 
-                          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-                          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                          className="overflow-hidden"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="mb-6 p-4 bg-white border-2 border-[#22C55E]/20 rounded-2xl shadow-sm space-y-4"
                         >
-                          <div className="bg-white p-4 rounded-xl border border-[#22C55E]/30 shadow-sm space-y-3">
-                            <div className="flex gap-2">
-                              {(['Call', 'Email', 'Meeting', 'Note'] as const).map(type => (
-                                <button
-                                  key={type}
-                                  onClick={() => setNewActivityType(type)}
-                                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ${
-                                    newActivityType === type 
-                                      ? 'bg-[#22C55E] text-white shadow-sm' 
-                                      : 'bg-[#F9FAFB] border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6]'
-                                  }`}
-                                >
-                                  {type === 'Call' && <Phone className="w-3 h-3" />}
-                                  {type === 'Email' && <Mail className="w-3 h-3" />}
-                                  {type === 'Meeting' && <Users className="w-3 h-3" />}
-                                  {type === 'Note' && <FileText className="w-3 h-3" />}
-                                  {type}
-                                </button>
-                              ))}
-                            </div>
-                            <textarea 
-                              value={newActivityNote}
-                              onChange={(e) => setNewActivityNote(e.target.value)}
-                              placeholder="Nhập nội dung hoạt động..."
-                              className="w-full px-3 py-2 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm focus:ring-2 focus:ring-[#22C55E] outline-none transition-all resize-none min-h-[80px]"
-                            />
-                            <div className="flex justify-end">
-                              <button 
-                                onClick={handleAddActivity}
-                                disabled={!newActivityNote.trim()}
-                                className="px-4 py-2 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-sm"
+                          <div className="flex gap-2">
+                            {(['Call', 'Email', 'Meeting', 'Note'] as const).map(type => (
+                              <button
+                                key={type}
+                                onClick={() => setNewActivityType(type)}
+                                className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all border ${
+                                  newActivityType === type 
+                                    ? 'bg-[#22C55E] text-white border-[#22C55E]' 
+                                    : 'bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F3F4F6]'
+                                }`}
                               >
-                                <CheckCircle2 className="w-3 h-3" /> Lưu hoạt động
+                                {type}
                               </button>
-                            </div>
+                            ))}
                           </div>
+                          <textarea 
+                            value={newActivityNote}
+                            onChange={(e) => setNewActivityNote(e.target.value)}
+                            placeholder="Nhập nội dung hoạt động..."
+                            className="w-full px-4 py-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-sm focus:ring-2 focus:ring-[#22C55E] outline-none transition-all min-h-[100px] resize-none"
+                          />
+                          <button 
+                            onClick={handleAddActivity}
+                            disabled={!newActivityNote.trim()}
+                            className="w-full py-3 bg-[#22C55E] text-white rounded-xl text-sm font-bold hover:bg-[#16A34A] transition-all disabled:opacity-50 shadow-lg shadow-green-500/20"
+                          >
+                            Lưu hoạt động
+                          </button>
                         </motion.div>
                       )}
                     </AnimatePresence>
-                    
-                    <div className="relative pl-4 border-l-2 border-[#E5E7EB] space-y-6 ml-2 mt-2">
+
+                    <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-[#E5E7EB]">
                       {selectedLead.history.map((activity, i) => {
                         const Icon = activity.type === 'Call' ? Phone :
                                      activity.type === 'Email' ? Mail :
@@ -1021,26 +1101,16 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                         const colorClass = activity.type === 'Call' ? 'bg-blue-500' :
                                            activity.type === 'Email' ? 'bg-orange-500' :
                                            activity.type === 'Meeting' ? 'bg-purple-500' : 'bg-gray-500';
-                        
-                        const bgLightClass = activity.type === 'Call' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                             activity.type === 'Email' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                             activity.type === 'Meeting' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-gray-50 text-gray-700 border-gray-200';
 
                         return (
-                          <div key={i} className="relative">
-                            {/* Timeline Dot */}
-                            <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white shadow-sm ${colorClass}`} />
-                            
-                            {/* Content Card */}
-                            <div className="bg-white p-4 rounded-xl border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow group">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold flex items-center gap-1.5 border ${bgLightClass}`}>
-                                    <Icon className="w-3 h-3" />
-                                    {activity.type}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-bold text-[#9CA3AF] flex items-center gap-1.5 bg-[#F9FAFB] px-2 py-1 rounded-md border border-[#E5E7EB]">
+                          <div key={i} className="relative pl-12">
+                            <div className={`absolute left-0 top-1 w-10 h-10 rounded-2xl border-4 border-white shadow-sm flex items-center justify-center text-white z-10 ${colorClass}`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-[#E5E7EB] shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] font-bold text-[#1A1A1A] uppercase tracking-widest">{activity.type}</span>
+                                <span className="text-[10px] font-bold text-[#9CA3AF] flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   {activity.date}
                                 </span>
@@ -1050,30 +1120,21 @@ export default function CRMSystem({ onBack, dashboardData, onRefresh, lastUpdate
                           </div>
                         );
                       })}
-                      
-                      {selectedLead.history.length === 0 && (
-                        <div className="text-center py-8 bg-[#F9FAFB] rounded-xl border border-dashed border-[#E5E7EB]">
-                          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm border border-[#E5E7EB]">
-                            <History className="w-5 h-5 text-[#9CA3AF]" />
-                          </div>
-                          <p className="text-sm font-bold text-[#4B5563] mb-1">Chưa có lịch sử</p>
-                          <p className="text-xs text-[#6B7280]">Bắt đầu ghi chú các hoạt động chăm sóc khách hàng.</p>
-                        </div>
-                      )}
                     </div>
                   </section>
                 </div>
               </div>
 
-              <div className="p-6 border-t border-[#E5E7EB] bg-[#F9FAFB] grid grid-cols-2 gap-3">
-                <button className="py-3 bg-white border border-[#E5E7EB] rounded-xl text-xs font-bold hover:bg-[#F3F4F6] transition-all">
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-[#E5E7EB] bg-white grid grid-cols-2 gap-4 sticky bottom-0">
+                <button className="py-3.5 bg-white border border-[#E5E7EB] rounded-2xl text-sm font-bold text-[#1A1A1A] hover:bg-[#F3F4F6] transition-all">
                   Chỉnh sửa
                 </button>
                 <button 
                   onClick={handleOpenEmailModal}
-                  className="py-3 bg-[#22C55E] text-white rounded-xl text-xs font-bold hover:bg-[#16A34A] transition-all flex items-center justify-center gap-2"
+                  className="py-3.5 bg-[#22C55E] text-white rounded-2xl text-sm font-bold hover:bg-[#16A34A] transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
                 >
-                  <Send className="w-4 h-4" />
+                  <Mail className="w-4 h-4" />
                   Gửi Email
                 </button>
               </div>
